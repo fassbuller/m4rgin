@@ -411,7 +411,7 @@ export function StapelDetail({ eintrag, regeln, einst, onSchliessen, onGespeiche
           <View style={[st.ergebnis, schatten(KATEGORIE_FARBE[ergebnis.kategorie], 6)]}>
             <View style={st.ergebnisKopf}>
               <Icon name="pencil" size={18} farbe={F.grau} />
-              <Text style={st.ergebnisTitel}>Bleistiftpreis</Text>
+              <Text style={st.ergebnisTitel}>m4rgin-Preis</Text>
               <KategorieBadge k={ergebnis.kategorie} gross />
             </View>
             <View style={st.stepper}>

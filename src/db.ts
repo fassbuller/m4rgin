@@ -68,6 +68,7 @@ export function db(): Promise<SQLite.SQLiteDatabase> {
 }
 
 async function init() {
+  // Dateiname bleibt aus der Zeit als „Bleistift“ – umbenennen würde vorhandene Stapel und Verläufe verlieren
   const d = await SQLite.openDatabaseAsync('bleistift.db');
   await d.execAsync(`
     PRAGMA journal_mode = WAL;
@@ -509,7 +510,7 @@ export async function exportCsv(nurStapel = false) {
   const datum = new Date().toISOString().slice(0, 10);
   const teil = nurStapel ? aktiv?.name ?? 'stapel' : 'log';
   const sauber = teil.toLowerCase().replace(/[^a-z0-9äöüß]+/gi, '-').replace(/^-+|-+$/g, '') || 'stapel';
-  const name = `bleistift-${sauber}-${datum}.csv`;
+  const name = `m4rgin-${sauber}-${datum}.csv`;
   const datei = new File(Paths.cache, name);
   if (datei.exists) datei.delete();
   datei.create();

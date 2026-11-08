@@ -4,7 +4,7 @@
 
 // Wikimedia drosselt Anfragen mit allgemeinem User-Agent (okhttp, node) schnell auf 429 –
 // ein eigener, sprechender User-Agent ist laut deren Regeln Pflicht und hebt das auf.
-const NAME = 'Bleistift/0.1 (Auspreis-App, Hennwack Buchgenossenschaft eG)';
+const NAME = 'm4rgin/0.1 (Auspreis-App, Hennwack Buchgenossenschaft eG)';
 export const UA = { 'User-Agent': NAME, 'Api-User-Agent': NAME };
 const API = 'https://de.wikipedia.org/w/api.php';
 

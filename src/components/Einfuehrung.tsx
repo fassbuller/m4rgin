@@ -21,7 +21,7 @@ const SEITEN: Seite[] = [
     icon: 'pencil',
     farbe: F.gelb,
     notiz: 'willkommen!',
-    titel: 'Bleistift preist Bücher in Sekunden aus',
+    titel: 'm4rgin preist Bücher in Sekunden aus',
     punkte: [
       { icon: 'store-search', text: 'Fragt booklooker, eurobuch und eBay gleichzeitig nach Vergleichspreisen.' },
       { icon: 'calculator-variant', text: 'Rechnet nach euren Regeln – jeder Zu- und Abschlag steht sichtbar in der Rechnung.' },
@@ -47,7 +47,7 @@ const SEITEN: Seite[] = [
     punkte: [
       { icon: 'gesture-tap', text: 'Während der Suche steht das Buch unten. Ist es erkannt, springt es als Karte in die Mitte – Bronze, Silber, Gold oder Schwarz.' },
       { icon: 'arrow-right', text: 'Karte antippen = auspreisen. Wegwischen oder nächsten Barcode scannen = weiter.' },
-      { icon: 'star-half-full', text: 'Zustand und Merkmale wählen – der Bleistiftpreis rechnet live mit.' },
+      { icon: 'star-half-full', text: 'Zustand und Merkmale wählen – der m4rgin-Preis rechnet live mit.' },
       { icon: 'radiobox-marked', text: 'Anderes Vergleichsangebot? Einfach antippen.' },
     ],
   },

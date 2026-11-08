@@ -1,4 +1,4 @@
-// Bleistift – Auspreis-Helfer für Hennwack (Prototyp). Vier Reiter, keine Navigationsbibliothek.
+// m4rgin – Auspreis-Helfer für Hennwack (Prototyp). Vier Reiter, keine Navigationsbibliothek.
 // Auf Tablets (≥ 760 pt breit) „Thekenmodus“: Scanner und Stapel nebeneinander, Querformat erlaubt.
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Dimensions, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';

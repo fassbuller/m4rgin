@@ -13,6 +13,7 @@ const GEHEIM = {
 } as const;
 type GeheimName = keyof typeof GEHEIM;
 
+// Schlüsselnamen aus der Zeit als „Bleistift“ – umbenennen würde gespeicherte Passwörter verlieren
 const schluessel = (n: GeheimName) => `bleistift.${n}`;
 
 /** Kopie ohne Geheimnisse – das ist, was in SQLite gespeichert wird. */
