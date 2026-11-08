@@ -19,6 +19,7 @@ import { Einstellungen } from '../einstellungen';
 import { LogEintrag, logAuspreisen, logSuche, logVerworfen, Methode } from '../db';
 import { marktFuer, seltenheitFuer, sucheFelder, sucheIsbn, trendsFuer, vorlaeufig } from '../dienste';
 import { useBewegung } from '../components/Glanz';
+import { Feier, FeierDaten } from '../components/Feier';
 import { LiveKarte } from '../components/LiveKarte';
 import { AuspreisDaten, PreisSheet } from '../components/PreisSheet';
 import { OcrSheet, TrefferListe } from '../components/Auswahl';
@@ -54,9 +55,11 @@ interface Props {
   stapel: { anzahl: number; summe: number; name?: string | null };
   onStapelGeaendert: () => void;
   onZumStapel: () => void;
+  /** Thekenmodus: Stapel steht daneben → keine Stapel-Leiste unten */
+  ohneStapelLeiste?: boolean;
 }
 
-export function ScanScreen({ aktiv, einst, stapel, onStapelGeaendert, onZumStapel }: Props) {
+export function ScanScreen({ aktiv, einst, stapel, onStapelGeaendert, onZumStapel, ohneStapelLeiste }: Props) {
   const oben = useSafeAreaInsets().top;
   const [erlaubnis, erlaubnisAnfragen] = useCameraPermissions();
   const kamera = useRef<CameraView>(null);
@@ -80,15 +83,21 @@ export function ScanScreen({ aktiv, einst, stapel, onStapelGeaendert, onZumStape
         : null,
     [vorgang?.titel, vorgang?.markt, vorgang?.marktLaedt, vorgang?.vorlaeufig, vorgang?.trends, einst.seltenheit],
   );
-  // Einmal pro Buch vibrieren, wenn es bestätigt selten ist – man merkt es, ohne hinzuschauen
-  const vibriert = useRef<number | null>(null);
+  // Einmal pro Buch: bestätigt seltene Funde werden gefeiert (Vollbild-Enthüllung mit Teilen) –
+  // ist die Feier aus, gibt es nur die Vibration; man merkt es so oder so, ohne hinzuschauen.
+  const [feier, setFeier] = useState<FeierDaten | null>(null);
+  const gefeiert = useRef<number | null>(null);
   useEffect(() => {
-    if (!vorgang || !seltenheit || seltenheit.effekt !== 'voll' || !einst.seltenheit.vibration) return;
+    if (!vorgang?.titel || !seltenheit || seltenheit.effekt !== 'voll') return;
     if (seltenheit.stufe !== 'selten' && seltenheit.stufe !== 'raritaet') return;
-    if (vibriert.current === vorgang.start) return;
-    vibriert.current = vorgang.start;
-    rueckmeldung(seltenheit.stufe === 'raritaet' ? 'raritaet' : 'selten');
-  }, [seltenheit, vorgang?.start, einst.seltenheit.vibration]);
+    if (gefeiert.current === vorgang.start) return;
+    gefeiert.current = vorgang.start;
+    if (einst.seltenheit.feier && !sheetOffen) {
+      setFeier({ titel: vorgang.titel, preis: vorgang.vorlaeufig?.vorschlag ?? null, seltenheit });
+    } else if (einst.seltenheit.vibration) {
+      rueckmeldung(seltenheit.stufe === 'raritaet' ? 'raritaet' : 'selten');
+    }
+  }, [seltenheit, vorgang?.start, einst.seltenheit.vibration, einst.seltenheit.feier]);
 
   // Suche-Formular
   const [fTitel, setFTitel] = useState('');
@@ -417,6 +426,7 @@ export function ScanScreen({ aktiv, einst, stapel, onStapelGeaendert, onZumStape
             </View>
           </Pressable>
         )}
+        {!ohneStapelLeiste && (
         <Pressable onPress={onZumStapel} style={st.stapel}>
           <View style={st.stapelIcon}>
             <Icon name="bookshelf" size={20} farbe={BEREICH.stapel} />
@@ -435,6 +445,7 @@ export function ScanScreen({ aktiv, einst, stapel, onStapelGeaendert, onZumStape
           <Text style={st.stapelSumme}>{euro(stapel.summe)}</Text>
           <Icon name="chevron-right" size={24} farbe="#fff" />
         </Pressable>
+        )}
       </View>
 
       {sheetOffen && vorgang?.titel && (
@@ -453,6 +464,7 @@ export function ScanScreen({ aktiv, einst, stapel, onStapelGeaendert, onZumStape
           }}
         />
       )}
+      <Feier daten={feier} effekte={einst.seltenheit.effekte} onZu={() => setFeier(null)} />
       {treffer && (
         <TrefferListe
           treffer={treffer.liste}

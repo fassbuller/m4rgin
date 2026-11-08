@@ -24,6 +24,8 @@ interface Props {
   regeln: PreisRegeln;
   einst: Einstellungen;
   onGeaendert: () => void;
+  /** Ändert sich, wenn woanders (Scanner) Bücher dazukamen – dann neu laden (Thekenmodus: beide sichtbar) */
+  version?: number;
 }
 
 interface Dialog {
@@ -34,7 +36,7 @@ interface Dialog {
 
 const SORTIERUNG_LABEL: Record<Sortierung, string> = { kategorie: 'Kategorie', preis: 'Preis', zeit: 'Zuletzt gescannt' };
 
-export function StapelScreen({ regeln, einst, onGeaendert }: Props) {
+export function StapelScreen({ regeln, einst, onGeaendert, version }: Props) {
   const [aktiv, setAktiv] = useState<Stapel | null>(null);
   const [alle, setAlle] = useState<Stapel[]>([]);
   const [eintraege, setEintraege] = useState<LogEintrag[]>([]);
@@ -53,7 +55,7 @@ export function StapelScreen({ regeln, einst, onGeaendert }: Props) {
 
   useEffect(() => {
     laden().catch(() => undefined);
-  }, [laden]);
+  }, [laden, version]);
 
   /** Nach jeder Änderung: eigenen Zustand und den Reiter-Zähler in App aktualisieren. */
   const geaendert = async () => {

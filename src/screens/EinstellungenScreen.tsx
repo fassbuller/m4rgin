@@ -9,16 +9,34 @@ import { Merkmal, MERKMAL_LABEL, ZweigRegeln, Zustand, ZUSTAND_LABEL } from '../
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BEREICH, F, hell, RADIUS, ABSTAND, ZUSTAND_FARBE } from '../theme';
 import { Chip, Icon, IconName, Knopf, Kopf, MERKMAL_ICON, Stepper } from '../components/Teile';
+import { Feier, FeierDaten } from '../components/Feier';
+
+/** Beispiel für „Feier ausprobieren“ – ein erfundener, aber plausibler Fund */
+const PROBE: FeierDaten = {
+  titel: { quelle: 'manuell', titel: 'Der Untertan', autoren: ['Mann, Heinrich'], jahr: '1918', verlag: 'Kurt Wolff' },
+  preis: 120,
+  seltenheit: {
+    stufe: 'raritaet',
+    bestaetigt: true,
+    moeglich: false,
+    gruende: ['nur 1 Angebot online', 'erschienen 1918, Erstausgabe'],
+    vorbehalte: [],
+    effekt: 'voll',
+  },
+};
 
 interface Props {
   einst: Einstellungen;
   onGespeichert: (e: Einstellungen) => void;
+  /** Erste-Schritte-Einführung erneut zeigen */
+  onEinfuehrung?: () => void;
 }
 
-export function EinstellungenScreen({ einst, onGespeichert }: Props) {
+export function EinstellungenScreen({ einst, onGespeichert, onEinfuehrung }: Props) {
   const [e, setE] = useState<Einstellungen>(einst);
   const [test, setTest] = useState<string | null>(null);
   const [testLaeuft, setTestLaeuft] = useState(false);
+  const [probe, setProbe] = useState(false);
   const rand = useSafeAreaInsets();
   useEffect(() => setE(einst), [einst]);
 
@@ -144,6 +162,8 @@ export function EinstellungenScreen({ einst, onGespeichert }: Props) {
             Stufen Gefragt → Selten → Rarität. Glitzer gibt es nur, wenn die Gründe belegt sind (Fehlalarm-Schutz) – sonst erscheint das Abzeichen mit „prüfen“. Neuerscheinungen und noch lieferbare Bücher zählen nicht als selten.
           </Text>
           <Schalter label="Glitzer-Effekte" wert={sr.effekte} setze={(v) => setS({ effekte: v })} />
+          <Schalter label="Feier bei seltenen Büchern (mit Teilen)" wert={sr.feier} setze={(v) => setS({ feier: v })} />
+          <Knopf label="Feier ausprobieren" icon="star-four-points" leise farbe={F.lila} onPress={() => setProbe(true)} stil={{ marginTop: 6 }} />
           <Schalter label="Vibration bei seltenen Büchern" wert={sr.vibration} setze={(v) => setS({ vibration: v })} />
           <Text style={[st.label, { marginTop: 10, fontWeight: '700', color: F.tinte }]}>Nach Angebotszahl (höchstens)</Text>
           <ZahlFeld label="Gefragt bis" schritt={1} max={100} wert={sr.gefragtBisAngebote} setze={(v) => setS({ gefragtBisAngebote: Math.round(v) })} />
@@ -202,6 +222,7 @@ export function EinstellungenScreen({ einst, onGespeichert }: Props) {
           ))}
         </Abschnitt>
 
+        <Knopf label="Einführung ansehen" icon="gesture-tap" leise farbe={F.tinte} onPress={() => onEinfuehrung?.()} stil={{ marginBottom: 10 }} />
         <Knopf
           label="Auf Standard zurücksetzen"
           icon="restore"
@@ -223,6 +244,7 @@ export function EinstellungenScreen({ einst, onGespeichert }: Props) {
         <Knopf label="Speichern" icon="content-save" farbe={BEREICH.einst} onPress={() => speichern()} />
       </View>
 
+      <Feier daten={probe ? PROBE : null} effekte={e.seltenheit.effekte} onZu={() => setProbe(false)} />
       {test != null && (
         <Modal visible animationType="slide" onRequestClose={() => setTest(null)}>
           <ScrollView style={{ flex: 1, backgroundColor: F.papier }} contentContainerStyle={{ padding: ABSTAND, paddingTop: rand.top + ABSTAND, paddingBottom: rand.bottom + ABSTAND }}>

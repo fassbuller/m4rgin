@@ -19,6 +19,7 @@ import { BEREICH, F, hell, KATEGORIE_FARBE, ABSTAND, SCHRIFT, schatten, ZUSTAND_
 import { Abschnitt, Chip, Genres, Icon, KategorieBadge, Knopf, Schritt, Stepper } from './Teile';
 import { Rechnung } from './Rechnung';
 import { Cover } from './Cover';
+import { Feier } from './Feier';
 import { Funkeln, HoloGlanz, SchimmerText, SeltenheitsInfo, STUFE_FARBE, StufenBadge, useBewegung } from './Glanz';
 
 interface Props {
@@ -81,6 +82,7 @@ export function StapelDetail({ eintrag, regeln, einst, onSchliessen, onGespeiche
   const neupreis = parseZahl(neupreisText);
   const [beschreibung, setBeschreibung] = useState<Beschreibung | null>(null);
   const [kiLaedt, setKiLaedt] = useState(false);
+  const [feiern, setFeiern] = useState(false);
   const kiMoeglich = !!einst.ki.basisUrl && !!(einst.ki.textModell || einst.ki.modell);
 
   const titel: Titel = useMemo(
@@ -261,6 +263,9 @@ export function StapelDetail({ eintrag, regeln, einst, onSchliessen, onGespeiche
           <View style={{ marginTop: 12 }}>
             <StufenBadge s={seltenheit} />
             <SeltenheitsInfo s={seltenheit} />
+            {seltenheit.bestaetigt && (seltenheit.stufe === 'selten' || seltenheit.stufe === 'raritaet') && (
+              <Knopf label="Fund feiern und teilen" icon="star-four-points" leise farbe={F.lila} onPress={() => setFeiern(true)} stil={{ marginTop: 8 }} />
+            )}
           </View>
         )}
 
@@ -436,6 +441,13 @@ export function StapelDetail({ eintrag, regeln, einst, onSchliessen, onGespeiche
           stil={{ flex: 2 }}
         />
       </View>
+      {seltenheit && (
+        <Feier
+          daten={feiern ? { titel, preis: endpreis ?? eintrag.endpreis, seltenheit } : null}
+          effekte={einst.seltenheit.effekte}
+          onZu={() => setFeiern(false)}
+        />
+      )}
     </Modal>
   );
 }

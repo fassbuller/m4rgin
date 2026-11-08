@@ -18,6 +18,8 @@ export interface SeltenheitsRegeln {
   effekte: boolean;
   /** Vibration beim Scannen eines bestätigt seltenen Buchs */
   vibration: boolean;
+  /** Vollbild-Feier mit Teilen-Karte bei bestätigt seltenen Büchern */
+  feier: boolean;
   gefragtBisAngebote: number;
   seltenBisAngebote: number;
   raritaetBisAngebote: number;
@@ -40,6 +42,7 @@ export interface SeltenheitsRegeln {
 export const STANDARD_SELTENHEIT: SeltenheitsRegeln = {
   effekte: true,
   vibration: true,
+  feier: true,
   gefragtBisAngebote: 10,
   seltenBisAngebote: 3,
   raritaetBisAngebote: 1,

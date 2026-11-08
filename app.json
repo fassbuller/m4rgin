@@ -3,13 +3,13 @@
     "name": "Bleistift",
     "slug": "bleistift",
     "version": "0.1.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "backgroundColor": "#fbf6ee",
     "ios": {
       "bundleIdentifier": "de.hennwack.bleistift",
-      "supportsTablet": false,
+      "supportsTablet": true,
       "infoPlist": {
         "NSLocalNetworkUsageDescription": "Bleistift verbindet sich mit dem KI-Rechner (Ollama) im Laden-WLAN.",
         "NSAppTransportSecurity": {
