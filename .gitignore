@@ -24,3 +24,4 @@ metro.log
 local.properties
 .DS_Store
 Thumbs.db
+build-android*.log

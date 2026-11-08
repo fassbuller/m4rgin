@@ -37,6 +37,7 @@
         }
       ],
       "expo-sqlite",
+      "./plugins/cmake-neu.js",
       [
         "expo-splash-screen",
         {
