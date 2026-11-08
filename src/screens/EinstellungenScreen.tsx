@@ -10,20 +10,21 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BEREICH, F, hell, RADIUS, ABSTAND, ZUSTAND_FARBE } from '../theme';
 import { Chip, Icon, IconName, Knopf, Kopf, MERKMAL_ICON, Stepper } from '../components/Teile';
 import { Feier, FeierDaten } from '../components/Feier';
+import { Stufe } from '../lib/seltenheit';
 
-/** Beispiel für „Feier ausprobieren“ – ein erfundener, aber plausibler Fund */
-const PROBE: FeierDaten = {
-  titel: { quelle: 'manuell', titel: 'Der Untertan', autoren: ['Mann, Heinrich'], jahr: '1918', verlag: 'Kurt Wolff' },
-  preis: 120,
-  seltenheit: {
-    stufe: 'raritaet',
-    bestaetigt: true,
-    moeglich: false,
-    gruende: ['nur 1 Angebot online', 'erschienen 1918, Erstausgabe'],
-    vorbehalte: [],
-    effekt: 'voll',
-  },
-};
+/** Beispiele für „Karten ausprobieren“ – je Metall ein erfundener, aber plausibler Fund */
+const probe = (stufe: Stufe, titel: string, autor: string, jahr: string, preis: number, gruende: string[]): FeierDaten => ({
+  titel: { quelle: 'manuell', titel, autoren: [autor], jahr },
+  preis,
+  seltenheit: { stufe, bestaetigt: true, moeglich: false, gruende, vorbehalte: [], effekt: stufe === 'gewoehnlich' ? 'keiner' : 'voll' },
+  ort: preis >= 15 ? 'Ins Lager' : 'Regal',
+});
+const PROBEN: { label: string; daten: FeierDaten }[] = [
+  { label: 'Bronze', daten: probe('gewoehnlich', 'Die Liebe: Psychologie eines Phänomens', 'Lauster, Peter', '2009', 3, []) },
+  { label: 'Silber', daten: probe('gefragt', 'Faserland', 'Kracht, Christian', '1995', 12, ['nur 8 Angebote online']) },
+  { label: 'Gold', daten: probe('selten', 'Die Ausgewanderten', 'Sebald, W. G.', '1992', 45, ['nur 3 Angebote online']) },
+  { label: 'Schwarz', daten: probe('raritaet', 'Der Untertan', 'Mann, Heinrich', '1918', 120, ['nur 1 Angebot online', 'erschienen 1918, Erstausgabe']) },
+];
 
 interface Props {
   einst: Einstellungen;
@@ -36,7 +37,7 @@ export function EinstellungenScreen({ einst, onGespeichert, onEinfuehrung }: Pro
   const [e, setE] = useState<Einstellungen>(einst);
   const [test, setTest] = useState<string | null>(null);
   const [testLaeuft, setTestLaeuft] = useState(false);
-  const [probe, setProbe] = useState(false);
+  const [probeDaten, setProbeDaten] = useState<FeierDaten | null>(null);
   const rand = useSafeAreaInsets();
   useEffect(() => setE(einst), [einst]);
 
@@ -163,7 +164,13 @@ export function EinstellungenScreen({ einst, onGespeichert, onEinfuehrung }: Pro
           </Text>
           <Schalter label="Glitzer-Effekte" wert={sr.effekte} setze={(v) => setS({ effekte: v })} />
           <Schalter label="Feier bei seltenen Büchern (mit Teilen)" wert={sr.feier} setze={(v) => setS({ feier: v })} />
-          <Knopf label="Feier ausprobieren" icon="star-four-points" leise farbe={F.lila} onPress={() => setProbe(true)} stil={{ marginTop: 6 }} />
+          <Schalter label="Karte kurz aufklappen bei jedem Scan" wert={sr.aufklappen} setze={(v) => setS({ aufklappen: v })} />
+          <Text style={[st.label, { marginTop: 8 }]}>Karten ausprobieren (Gold und Schwarz mit großer Feier)</Text>
+          <View style={st.reihe}>
+            {PROBEN.map((x) => (
+              <Chip key={x.label} label={x.label} farbe={F.tinte} onPress={() => setProbeDaten(x.daten)} />
+            ))}
+          </View>
           <Schalter label="Vibration bei seltenen Büchern" wert={sr.vibration} setze={(v) => setS({ vibration: v })} />
           <Text style={[st.label, { marginTop: 10, fontWeight: '700', color: F.tinte }]}>Nach Angebotszahl (höchstens)</Text>
           <ZahlFeld label="Gefragt bis" schritt={1} max={100} wert={sr.gefragtBisAngebote} setze={(v) => setS({ gefragtBisAngebote: Math.round(v) })} />
@@ -244,7 +251,7 @@ export function EinstellungenScreen({ einst, onGespeichert, onEinfuehrung }: Pro
         <Knopf label="Speichern" icon="content-save" farbe={BEREICH.einst} onPress={() => speichern()} />
       </View>
 
-      <Feier daten={probe ? PROBE : null} effekte={e.seltenheit.effekte} onZu={() => setProbe(false)} />
+      <Feier daten={probeDaten} effekte={e.seltenheit.effekte} onZu={() => setProbeDaten(null)} />
       {test != null && (
         <Modal visible animationType="slide" onRequestClose={() => setTest(null)}>
           <ScrollView style={{ flex: 1, backgroundColor: F.papier }} contentContainerStyle={{ padding: ABSTAND, paddingTop: rand.top + ABSTAND, paddingBottom: rand.bottom + ABSTAND }}>

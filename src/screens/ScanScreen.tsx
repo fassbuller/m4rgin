@@ -13,13 +13,15 @@ import { texterkennen, texterkennungVerfuegbar } from '../lib/texterkennung';
 import { rueckmeldung } from '../lib/haptik';
 import { fehlerText } from '../lib/fehler';
 import { MarktErgebnis } from '../lib/markt';
-import { euro, PreisErgebnis } from '../lib/preis';
+import { euro, KATEGORIE_LABEL, PreisErgebnis } from '../lib/preis';
 import { Signal } from '../lib/trend';
 import { Einstellungen } from '../einstellungen';
 import { LogEintrag, logAuspreisen, logSuche, logVerworfen, Methode } from '../db';
 import { marktFuer, seltenheitFuer, sucheFelder, sucheIsbn, trendsFuer, vorlaeufig } from '../dienste';
 import { useBewegung } from '../components/Glanz';
 import { Feier, FeierDaten } from '../components/Feier';
+import { KurzKarte } from '../components/KurzKarte';
+import { KartenInhalt } from '../components/BuchKarte';
 import { LiveKarte } from '../components/LiveKarte';
 import { AuspreisDaten, PreisSheet } from '../components/PreisSheet';
 import { OcrSheet, TrefferListe } from '../components/Auswahl';
@@ -86,18 +88,31 @@ export function ScanScreen({ aktiv, einst, stapel, onStapelGeaendert, onZumStape
   // Einmal pro Buch: bestätigt seltene Funde werden gefeiert (Vollbild-Enthüllung mit Teilen) –
   // ist die Feier aus, gibt es nur die Vibration; man merkt es so oder so, ohne hinzuschauen.
   const [feier, setFeier] = useState<FeierDaten | null>(null);
+  const [kurzKarte, setKurzKarte] = useState<KartenInhalt | null>(null);
   const gefeiert = useRef<number | null>(null);
   useEffect(() => {
-    if (!vorgang?.titel || !seltenheit || seltenheit.effekt !== 'voll') return;
-    if (seltenheit.stufe !== 'selten' && seltenheit.stufe !== 'raritaet') return;
+    if (!vorgang?.titel || !seltenheit || vorgang.marktLaedt) return;
     if (gefeiert.current === vorgang.start) return;
     gefeiert.current = vorgang.start;
-    if (einst.seltenheit.feier && !sheetOffen) {
-      setFeier({ titel: vorgang.titel, preis: vorgang.vorlaeufig?.vorschlag ?? null, seltenheit });
-    } else if (einst.seltenheit.vibration) {
-      rueckmeldung(seltenheit.stufe === 'raritaet' ? 'raritaet' : 'selten');
+    const gross = seltenheit.effekt === 'voll' && (seltenheit.stufe === 'selten' || seltenheit.stufe === 'raritaet');
+    const ort = vorgang.vorlaeufig ? KATEGORIE_LABEL[vorgang.vorlaeufig.kategorie] : null;
+    // Gold und Schwarz: große Feier (wenn eingeschaltet)
+    if (gross && einst.seltenheit.feier && !sheetOffen) {
+      setFeier({ titel: vorgang.titel, preis: vorgang.vorlaeufig?.vorschlag ?? null, seltenheit, ort });
+      return;
     }
-  }, [seltenheit, vorgang?.start, einst.seltenheit.vibration, einst.seltenheit.feier]);
+    if (gross && einst.seltenheit.vibration) rueckmeldung(seltenheit.stufe === 'raritaet' ? 'raritaet' : 'selten');
+    // Alle anderen: Karte kurz aufklappen – unbelegte Seltenheit nur als Bronze mit „prüfen“
+    if (einst.seltenheit.aufklappen && !sheetOffen) {
+      setKurzKarte({
+        titel: vorgang.titel,
+        preis: vorgang.vorlaeufig?.vorschlag ?? null,
+        stufe: seltenheit.bestaetigt ? seltenheit.stufe : 'gewoehnlich',
+        pruefen: !seltenheit.bestaetigt,
+        ort,
+      });
+    }
+  }, [seltenheit, vorgang?.start, vorgang?.marktLaedt, einst.seltenheit.vibration, einst.seltenheit.feier, einst.seltenheit.aufklappen]);
 
   // Suche-Formular
   const [fTitel, setFTitel] = useState('');
@@ -465,6 +480,9 @@ export function ScanScreen({ aktiv, einst, stapel, onStapelGeaendert, onZumStape
         />
       )}
       <Feier daten={feier} effekte={einst.seltenheit.effekte} onZu={() => setFeier(null)} />
+      {kurzKarte && aktiv && (
+        <KurzKarte key={vorgang?.start} inhalt={kurzKarte} bewegung={bewegung} onFertig={() => setKurzKarte(null)} />
+      )}
       {treffer && (
         <TrefferListe
           treffer={treffer.liste}

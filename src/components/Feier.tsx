@@ -12,8 +12,8 @@ import { StatusBar } from 'expo-status-bar';
 import * as Sharing from 'expo-sharing';
 import { captureRef } from 'react-native-view-shot';
 import { Text } from './Schrift';
-import { Cover } from './Cover';
-import { HoloGlanz, Funkeln, STUFE_FARBE, useBewegung } from './Glanz';
+import { BuchKarte } from './BuchKarte';
+import { STUFE_FARBE, useBewegung } from './Glanz';
 import { Icon, Knopf } from './Teile';
 import { Titel } from '../lib/titel';
 import { Seltenheit } from '../lib/seltenheit';
@@ -28,6 +28,8 @@ export interface FeierDaten {
   titel: Titel;
   preis: number | null;
   seltenheit: Seltenheit;
+  /** Kategorie bzw. Fach, z. B. „Regal · Belletristik“ */
+  ort?: string | null;
 }
 
 const KONFETTI_FARBEN = [F.gruen, F.gelb, F.orange, F.blau, F.lila, F.rot];
@@ -48,9 +50,9 @@ function Buehne({ daten, effekte, onZu }: { daten: FeierDaten; effekte: boolean;
   const s = daten.seltenheit;
   const farbe = STUFE_FARBE[s.stufe];
   const rar = s.stufe === 'raritaet';
+  // Große Show nur für Gold (selten) und Schwarz (Rarität); Bronze und Silber erscheinen ohne Spektakel
+  const gross = rar || s.stufe === 'selten';
   const kartenBreite = Math.min(width - ABSTAND * 4, 340);
-  const laenge = daten.titel.titel.length;
-  const titelGroesse = laenge > 90 ? 16 : laenge > 55 ? 18 : laenge > 30 ? 20 : 22;
   const gruende = s.gruende.filter((g) => !g.startsWith('Preis '));
   // Worum geht's: Wikipedia-Kurzbeschreibung des Werks, sonst die DNB-Sachgruppe
   const [kurz, setKurz] = useState<string | null>(
@@ -102,10 +104,10 @@ function Buehne({ daten, effekte, onZu }: { daten: FeierDaten; effekte: boolean;
   useEffect(() => {
     // Strahlen drehen endlos
     const dreh = Animated.loop(Animated.timing(strahlen, { toValue: 1, duration: rar ? 9000 : 14000, easing: Easing.linear, useNativeDriver: true }));
-    if (bewegung) dreh.start();
-    if (!bewegung) {
+    if (bewegung && gross) dreh.start();
+    if (!bewegung || !gross) {
       zumEnde();
-      rueckmeldung(rar ? 'raritaet' : 'selten');
+      if (gross) rueckmeldung(rar ? 'raritaet' : 'selten');
       return () => dreh.stop();
     }
 
@@ -263,44 +265,16 @@ function Buehne({ daten, effekte, onZu }: { daten: FeierDaten; effekte: boolean;
             ],
           }}
         >
-          {/* Vorderseite – das, was geteilt wird. Sie bestimmt die Kartengröße, damit der Titel immer ganz draufpasst. */}
+          {/* Vorderseite – die Sammelkarte; genau sie wird als Bild geteilt */}
           <Animated.View style={{ transform: [{ perspective: 900 }, { rotateY: drehVorne }] }}>
-            <View ref={karte} collapsable={false} style={[st.vorderseite, { width: kartenBreite, boxShadow: `8px 8px 0px ${rar ? F.gelb : farbe}` }]}>
-              {/* Rarität: Holo-Regenbogen als Kante oben */}
-              {rar && (
-                <View style={st.regenbogen}>
-                  {KONFETTI_FARBEN.map((f) => (
-                    <View key={f} style={{ flex: 1, backgroundColor: f }} />
-                  ))}
-                </View>
-              )}
-              <View style={st.kopfReihe}>
-                <Animated.View style={[st.stufe, { backgroundColor: farbe }, { opacity: stufe, transform: [{ scale: stufe.interpolate({ inputRange: [0, 1], outputRange: [2.2, 1] }) }] }]}>
-                  <Text style={[st.stufeText, { color: aufFarbe(farbe) }]}>{rar ? '✦✦ RARITÄT' : '✦ SELTEN'}</Text>
-                </Animated.View>
-                <Text style={st.fund}>Fund des Tages</Text>
-              </View>
-
-              <Animated.View style={[st.coverReihe, einblenden(cover, 24)]}>
-                <Funkeln aktiv={bewegung} farbe={rar ? F.gelb : farbe} anzahl={5}>
-                  <HoloGlanz aktiv={bewegung && rar} breite={96}>
-                    <Cover isbn={daten.titel.isbn} url={daten.titel.coverUrl} style={st.cover} iconGroesse={36} />
-                  </HoloGlanz>
-                </Funkeln>
-              </Animated.View>
-
-              <Animated.View style={einblenden(titel)}>
-                {/* Ganzer Titel, lange Titel etwas kleiner statt abgeschnitten */}
-                <Text style={[st.titel, { fontSize: titelGroesse }]}>{daten.titel.titel}</Text>
-                <Text style={st.autor}>
-                  {[daten.titel.autoren[0]?.split(',').reverse().join(' ').trim(), daten.titel.verlag, daten.titel.jahr].filter(Boolean).join(' · ')}
-                </Text>
-                {kurz ? <Text style={st.kurz}>{kurz}</Text> : null}
-                <Text style={st.preis}>{daten.preis != null ? euro(preisAnzeige) : '—'}</Text>
-                {/* Der Preis steht schon groß da – als Grund nicht noch einmal */}
-                {gruende.length > 0 && <Text style={st.gruende}>{gruende.join(' · ')}</Text>}
-              </Animated.View>
+            <View ref={karte} collapsable={false} style={{ boxShadow: `8px 8px 0px ${rar ? F.gelb : F.tinte}` }}>
+              <BuchKarte
+                inhalt={{ titel: daten.titel, preis: daten.preis != null ? preisAnzeige : null, stufe: s.stufe, kurz, ort: daten.ort }}
+                breite={kartenBreite}
+                bewegung={bewegung}
+              />
             </View>
+            {gruende.length > 0 && <Animated.Text style={[st.gruende, einblenden(titel)]}>{gruende.join(' · ')}</Animated.Text>}
           </Animated.View>
 
           {/* Rückseite – liegt deckungsgleich über der Vorderseite */}
@@ -355,7 +329,7 @@ const st = StyleSheet.create({
   titel: { fontSize: 22, fontWeight: '800', color: F.tinte, textAlign: 'center', letterSpacing: -0.3 },
   autor: { fontSize: 14, color: F.grau, textAlign: 'center', marginTop: 2 },
   preis: { fontSize: 44, fontWeight: '800', color: F.tinte, textAlign: 'center', marginTop: 8, fontVariant: ['tabular-nums'] },
-  gruende: { fontSize: 12, color: F.grau, textAlign: 'center', marginTop: 2 },
+  gruende: { fontSize: 12, color: '#d9d3c7', textAlign: 'center', marginTop: 14, fontFamily: SCHRIFT.normal },
   regenbogen: { flexDirection: 'row', height: 8, marginTop: -ABSTAND, marginHorizontal: -ABSTAND, marginBottom: 12, borderBottomWidth: 2, borderBottomColor: F.tinte },
   kurz: { fontSize: 14, color: F.tinte, textAlign: 'center', marginTop: 8, lineHeight: 19 },
   knoepfe: { position: 'absolute', left: ABSTAND, right: ABSTAND, bottom: 0, flexDirection: 'row', gap: 10 },

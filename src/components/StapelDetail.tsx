@@ -13,13 +13,14 @@ import { MarktErgebnis } from '../lib/markt';
 import { Beschreibung, kiBeschreibung } from '../lib/beschreibung';
 import { fehlerText } from '../lib/fehler';
 import {
-  berechnePreis, euro, Merkmal, MERKMAL_LABEL, PreisRegeln, Zustand, ZUSTAND_LABEL,
+  berechnePreis, euro, KATEGORIE_LABEL, Merkmal, MERKMAL_LABEL, PreisRegeln, Zustand, ZUSTAND_LABEL,
 } from '../lib/preis';
 import { BEREICH, F, hell, KATEGORIE_FARBE, ABSTAND, SCHRIFT, schatten, ZUSTAND_FARBE } from '../theme';
 import { Abschnitt, Chip, Genres, Icon, KategorieBadge, Knopf, Schritt, Stepper } from './Teile';
 import { Rechnung } from './Rechnung';
 import { Cover } from './Cover';
 import { Feier } from './Feier';
+import { Seltenheit } from '../lib/seltenheit';
 import { Funkeln, HoloGlanz, SchimmerText, SeltenheitsInfo, STUFE_FARBE, StufenBadge, useBewegung } from './Glanz';
 
 interface Props {
@@ -68,6 +69,8 @@ const merkmaleAus = (s: string | null): Merkmal[] =>
     .split(',')
     .map((x) => x.trim())
     .filter((x): x is Merkmal => (MERKMALE as string[]).includes(x));
+
+const OHNE_STUFE: Seltenheit = { stufe: 'gewoehnlich', bestaetigt: true, moeglich: false, gruende: [], vorbehalte: [], effekt: 'keiner' };
 
 export function StapelDetail({ eintrag, regeln, einst, onSchliessen, onGespeichert }: Props) {
   const rand = useSafeAreaInsets();
@@ -148,6 +151,8 @@ export function StapelDetail({ eintrag, regeln, einst, onSchliessen, onGespeiche
     [eintrag, einst.seltenheit, markt, ergebnis, endpreis, merkmale],
   );
   const glitzer = !!seltenheit && seltenheit.effekt === 'voll' && bewegung && (seltenheit.stufe === 'selten' || seltenheit.stufe === 'raritaet');
+  // Welche Karte das Buch bekommt: belegte Stufe, sonst Bronze
+  const kartenStufe = seltenheit && seltenheit.bestaetigt ? seltenheit.stufe : 'gewoehnlich';
 
   const lage = markt?.lage
     ? `${markt.lage.anzahl} Angebote · ab ${euro(markt.lage.min ?? 0)} · Median ${euro(markt.lage.median ?? 0)}`
@@ -263,11 +268,17 @@ export function StapelDetail({ eintrag, regeln, einst, onSchliessen, onGespeiche
           <View style={{ marginTop: 12 }}>
             <StufenBadge s={seltenheit} />
             <SeltenheitsInfo s={seltenheit} />
-            {seltenheit.bestaetigt && (seltenheit.stufe === 'selten' || seltenheit.stufe === 'raritaet') && (
-              <Knopf label="Fund feiern und teilen" icon="star-four-points" leise farbe={F.lila} onPress={() => setFeiern(true)} stil={{ marginTop: 8 }} />
-            )}
           </View>
         )}
+        {/* Jedes Buch hat seine Karte (Bronze bis Schwarz) – Gold und Schwarz mit großer Feier */}
+        <Knopf
+          label={kartenStufe === 'selten' || kartenStufe === 'raritaet' ? 'Fund feiern und teilen' : 'Karte ansehen und teilen'}
+          icon="star-four-points"
+          leise
+          farbe={F.tinte}
+          onPress={() => setFeiern(true)}
+          stil={{ marginTop: 12 }}
+        />
 
         {eintrag.trend ? (
           <View style={st.trendReihe}>
@@ -441,13 +452,21 @@ export function StapelDetail({ eintrag, regeln, einst, onSchliessen, onGespeiche
           stil={{ flex: 2 }}
         />
       </View>
-      {seltenheit && (
-        <Feier
-          daten={feiern ? { titel, preis: endpreis ?? eintrag.endpreis, seltenheit } : null}
-          effekte={einst.seltenheit.effekte}
-          onZu={() => setFeiern(false)}
-        />
-      )}
+      <Feier
+        daten={
+          feiern
+            ? {
+                titel,
+                preis: endpreis ?? eintrag.endpreis,
+                // Unbelegte Seltenheit zeigt die Karte als Bronze – wie beim Scannen
+                seltenheit: seltenheit && seltenheit.bestaetigt ? seltenheit : { ...OHNE_STUFE, gruende: seltenheit?.gruende ?? [] },
+                ort: ergebnis ? KATEGORIE_LABEL[ergebnis.kategorie] : null,
+              }
+            : null
+        }
+        effekte={einst.seltenheit.effekte}
+        onZu={() => setFeiern(false)}
+      />
     </Modal>
   );
 }
