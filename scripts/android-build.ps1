@@ -1,10 +1,11 @@
 # Baut die Android-Testversion (Development Build) lokal und spielt sie auf den laufenden Emulator/das Gerät.
 # Aufruf aus dem Projektordner:  powershell -ExecutionPolicy Bypass -File scripts\android-build.ps1 [-Neu]
 #   -Neu  erzeugt den android-Ordner frisch aus app.json (nötig nach SDK-Update oder neuen nativen Paketen)
+#   -Abi  Prozessor-Architekturen, z. B. -Abi x86_64 nur für den Emulator (halbiert die Bauzeit)
 #
 # Warum die virtuellen Laufwerke: Das Android-NDK verträgt keine Leerzeichen im Pfad („Lennard Markus“).
 # B: zeigt auf den Ordner ÜBER dem Projekt – liegt package.json direkt im Laufwerks-Stamm, findet Expo es nicht.
-param([switch]$Neu)
+param([switch]$Neu, [string]$Abi = "x86_64,arm64-v8a")
 
 $projekt = Split-Path -Parent $PSScriptRoot
 $oben = Split-Path -Parent $projekt
@@ -31,7 +32,7 @@ if ($Neu -or -not (Test-Path android)) {
 
 Set-Location "B:\$name\android"
 "sdk.dir=S\:\\" | Out-File -Encoding ascii local.properties
-.\gradlew.bat app:assembleDebug -PreactNativeArchitectures=x86_64,arm64-v8a --console=plain
+.\gradlew.bat app:assembleDebug -PreactNativeArchitectures=$Abi --console=plain
 if ($LASTEXITCODE -ne 0) { Write-Host "BUILD FEHLGESCHLAGEN ($LASTEXITCODE)" -ForegroundColor Red; exit 1 }
 
 adb wait-for-device
