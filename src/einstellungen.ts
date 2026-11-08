@@ -31,7 +31,8 @@ export const STANDARD_EINSTELLUNGEN: Einstellungen = {
   ki: STANDARD_KI,
   booklooker: { aktiv: true, pid: '' }, // Partner-ID bei booklooker beantragen
   // Testzugang laut eurobuch-Doku – liefert echte Daten, aber ohne Provision; echten Zugang beantragen
-  eurobuch: { aktiv: true, benutzer: 'test', passwort: 'test' },
+  // Kein fest eingebauter Testzugang mehr (der wird gedrosselt) – echten Partnerzugang eintragen
+  eurobuch: { aktiv: true, benutzer: '', passwort: '' },
   ebay: { aktiv: false, clientId: '', clientSecret: '' },
   versandPauschale: 3,
   trendAktiv: true,
@@ -40,6 +41,21 @@ export const STANDARD_EINSTELLUNGEN: Einstellungen = {
   seltenheit: STANDARD_SELTENHEIT,
 };
 
+/**
+ * Zahl aus gespeicherten Einstellungen prüfen: keine Zahl (kaputt, Text, NaN) → Standard,
+ * sonst in den sinnvollen Bereich klemmen. Schützt z. B. vor Raster 0 (Endlos-Rundung) oder −500 %.
+ */
+export function geprueft(v: unknown, standard: number, min: number, max: number): number {
+  return typeof v === 'number' && Number.isFinite(v) ? Math.min(max, Math.max(min, v)) : standard;
+}
+
+/** Alle Zahlen eines Objekts mit gleichem Bereich prüfen (Zustands-Prozente, Knappheit …). */
+function alleGeprueft<T extends { [K in keyof T]: number }>(d: T, s: Partial<T> | undefined, min: number, max: number): T {
+  const out = { ...d };
+  for (const k of Object.keys(d) as (keyof T)[]) out[k] = geprueft(s?.[k], d[k], min, max) as T[keyof T];
+  return out;
+}
+
 /** Ältere Stände: Abschlag je Zustand, Merkmale verkleinerten ihn, „Mindestabschlag“ als Untergrenze. */
 type AltZweig = Partial<ZweigRegeln> & { abschlagMin?: number };
 
@@ -47,7 +63,7 @@ function zweigMitStandards(d: ZweigRegeln, s?: AltZweig | null): ZweigRegeln {
   return {
     anker: s?.anker ?? d.anker,
     // Der alte Mindestabschlag war faktisch das Unterbieten des Markts
-    marktAbschlag: s?.marktAbschlag ?? s?.abschlagMin ?? d.marktAbschlag,
+    marktAbschlag: geprueft(s?.marktAbschlag ?? s?.abschlagMin, d.marktAbschlag, 0, 0.9),
     nurGleicheAusgabe: s?.nurGleicheAusgabe ?? d.nurGleicheAusgabe,
     nurGleicherZustand: s?.nurGleicherZustand ?? d.nurGleicherZustand,
   };
@@ -65,14 +81,28 @@ export function regelnMitStandards(gespeichert?: Partial<PreisRegeln> | null): P
   return {
     laden: zweigMitStandards(d.laden, ladenAlt),
     lager: zweigMitStandards(d.lager, s.lager),
-    zustand: { ...d.zustand, ...s.zustand },
-    merkmale: { ...d.merkmale, ...s.merkmale },
-    raster: s.raster ?? d.raster,
-    rundung: s.rundung ?? d.rundung,
-    grabbelPreise: s.grabbelPreise?.length ? s.grabbelPreise : d.grabbelPreise,
-    regalAb: s.regalAb ?? d.regalAb,
-    lagerAb: s.lagerAb ?? d.lagerAb,
-    knappheit: { ...d.knappheit, ...s.knappheit },
+    zustand: alleGeprueft(d.zustand, s.zustand, -0.9, 1),
+    merkmale: Object.fromEntries(
+      (Object.keys(d.merkmale) as (keyof typeof d.merkmale)[]).map((m) => {
+        const z = s.merkmale?.[m];
+        const art = z?.art === 'euro' || z?.art === 'prozent' ? z.art : d.merkmale[m].art;
+        return [m, { art, wert: geprueft(z?.wert, d.merkmale[m].wert, 0, art === 'euro' ? 100000 : 5) }];
+      }),
+    ) as PreisRegeln['merkmale'],
+    raster: geprueft(s.raster, d.raster, 0.05, 50),
+    rundung: s.rundung === 'ab' || s.rundung === 'naechst' ? s.rundung : d.rundung,
+    grabbelPreise: (s.grabbelPreise ?? []).filter((x) => typeof x === 'number' && x > 0).length
+      ? s.grabbelPreise!.filter((x) => typeof x === 'number' && x > 0)
+      : d.grabbelPreise,
+    regalAb: geprueft(s.regalAb, d.regalAb, 0, 10000),
+    lagerAb: geprueft(s.lagerAb, d.lagerAb, 0, 100000),
+    knappheit: {
+      ...alleGeprueft(d.knappheit, s.knappheit, 0, 3),
+      massenwareAb: Math.round(geprueft(s.knappheit?.massenwareAb, d.knappheit.massenwareAb, 7, 10000)),
+      massenware: geprueft(s.knappheit?.massenware, d.knappheit.massenware, 0, 0.9),
+      nichtUnterbietenBis: Math.round(geprueft(s.knappheit?.nichtUnterbietenBis, d.knappheit.nichtUnterbietenBis, 0, 50)),
+      neuBisJahre: Math.round(geprueft(s.knappheit?.neuBisJahre, d.knappheit.neuBisJahre, 0, 50)),
+    },
     pruefMerkmale: s.pruefMerkmale?.length ? s.pruefMerkmale : d.pruefMerkmale,
   };
 }
@@ -88,11 +118,28 @@ export function mitStandards(gespeichert: Partial<Einstellungen> | null): Einste
     booklooker: { ...d.booklooker, ...s.booklooker },
     eurobuch: { ...d.eurobuch, ...s.eurobuch },
     ebay: { ...d.ebay, ...s.ebay },
-    versandPauschale: s.versandPauschale ?? d.versandPauschale,
+    versandPauschale: geprueft(s.versandPauschale, d.versandPauschale, 0, 100),
     trendAktiv: s.trendAktiv ?? d.trendAktiv,
     schnellmodus: s.schnellmodus ?? d.schnellmodus,
     googleBooksKey: s.googleBooksKey ?? d.googleBooksKey,
-    seltenheit: { ...d.seltenheit, ...s.seltenheit },
+    seltenheit: {
+      ...d.seltenheit,
+      ...s.seltenheit,
+      ...alleGeprueft(
+        {
+          gefragtBisAngebote: d.seltenheit.gefragtBisAngebote, seltenBisAngebote: d.seltenheit.seltenBisAngebote,
+          raritaetBisAngebote: d.seltenheit.raritaetBisAngebote, gefragtAbPreis: d.seltenheit.gefragtAbPreis,
+          seltenAbPreis: d.seltenheit.seltenAbPreis, raritaetAbPreis: d.seltenheit.raritaetAbPreis,
+          neuBisJahre: d.seltenheit.neuBisJahre,
+        },
+        s.seltenheit,
+        0,
+        100000,
+      ),
+      altVor: geprueft(s.seltenheit?.altVor, d.seltenheit.altVor, 1450, 2100),
+      bestaetigungsSpanne: geprueft(s.seltenheit?.bestaetigungsSpanne, d.seltenheit.bestaetigungsSpanne, 0.05, 2),
+      neuUeberNeupreis: geprueft(s.seltenheit?.neuUeberNeupreis, d.seltenheit.neuUeberNeupreis, 0, 5),
+    },
   };
 }
 

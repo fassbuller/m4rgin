@@ -11,6 +11,7 @@ import { marktFuer, marktUnvollstaendig, seltenheitAusEintrag } from '../dienste
 import { Titel } from '../lib/titel';
 import { MarktErgebnis } from '../lib/markt';
 import { Beschreibung, kiBeschreibung } from '../lib/beschreibung';
+import { fehlerText } from '../lib/fehler';
 import {
   berechnePreis, euro, Merkmal, MERKMAL_LABEL, PreisRegeln, Zustand, ZUSTAND_LABEL,
 } from '../lib/preis';
@@ -163,7 +164,7 @@ export function StapelDetail({ eintrag, regeln, einst, onSchliessen, onGespeiche
       setGewaehlt(null);
       setKorrektur(0);
     } catch (e) {
-      Alert.alert('Markt-Abfrage fehlgeschlagen', String((e as Error)?.message ?? e));
+      Alert.alert('Markt', fehlerText(e, 'Die Marktabfrage'));
     } finally {
       setLaedt(false);
     }
@@ -174,7 +175,7 @@ export function StapelDetail({ eintrag, regeln, einst, onSchliessen, onGespeiche
     try {
       setBeschreibung(await kiBeschreibung(titel, einst.ki));
     } catch (e) {
-      Alert.alert('KI-Beschreibung fehlgeschlagen', String((e as Error)?.message ?? e));
+      Alert.alert('KI', fehlerText(e, 'Die KI-Beschreibung'));
     } finally {
       setKiLaedt(false);
     }

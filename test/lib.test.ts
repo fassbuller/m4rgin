@@ -21,6 +21,9 @@ import { zuletzt } from '../src/lib/zuletzt';
 import { bereinigeAntwort, beschreibungsPrompt } from '../src/lib/beschreibung';
 import { bewerteSeltenheit, STANDARD_SELTENHEIT } from '../src/lib/seltenheit';
 import { stapelGruppen, stapelWert } from '../src/lib/stapelwert';
+import { fehlerArt, fehlerText } from '../src/lib/fehler';
+import { BegrenzteMap } from '../src/lib/cover';
+import { mitStandards } from '../src/einstellungen';
 import { coverUrl as olCoverUrl } from '../src/lib/openlibrary';
 
 // ---------- Preis ----------
@@ -669,4 +672,37 @@ test('Stapel-Liste: nach Kategorie gruppiert (Grabbel, Regal, Lager), sonst nach
   assert.deepEqual(stapelGruppen(liste, 'preis')[0].data.map((x) => x.id), [2, 1, 4, 3, 5]);
   assert.deepEqual(stapelGruppen(liste, 'zeit')[0].data.map((x) => x.id), [5, 4, 3, 2, 1]);
   assert.deepEqual(stapelGruppen([], 'preis'), []);
+});
+
+test('CSV: Formel-Injection wird entschärft', () => {
+  const csv = zuCsv(['Titel'], [['=HYPERLINK("x")'], ['+1'], ['-2'], ['@SUMME'], ['Normal']]);
+  const zeilen = csv.replace('﻿', '').trim().split('\r\n');
+  assert.equal(zeilen[1], `"'=HYPERLINK(""x"")"`);
+  assert.deepEqual(zeilen.slice(2), ["'+1", "'-2", "'@SUMME", 'Normal']);
+});
+
+test('Einstellungen: kaputte Zahlen fallen auf Standard zurück oder werden begrenzt', () => {
+  const e = mitStandards({
+    regeln: { raster: 0, regalAb: 'drei', zustand: { gut: -7 }, knappheit: { einAngebot: 99 } },
+    versandPauschale: -5,
+  } as unknown as Parameters<typeof mitStandards>[0]);
+  assert.equal(e.regeln.raster, 0.05); // nie 0 → keine Endlos-Rundung
+  assert.equal(e.regeln.regalAb, 2.5); // Text → Standard
+  assert.equal(e.regeln.zustand.gut, -0.9);
+  assert.equal(e.regeln.knappheit.einAngebot, 3);
+  assert.equal(e.versandPauschale, 0);
+  assert.equal(e.eurobuch.benutzer, ''); // kein fest eingebauter Testzugang mehr
+});
+
+test('Fehlertexte: verständlich statt technisch', () => {
+  assert.equal(fehlerArt(new TypeError('Network request failed')), 'offline');
+  assert.ok(fehlerText(new TypeError('Network request failed'), 'Die Preisabfrage').includes('keine Internetverbindung'));
+  assert.equal(fehlerArt(new Error('eurobuch antwortet mit 503')), 'quelle');
+  assert.equal(fehlerArt(new Error("Call to function 'NativeDatabase.prepareAsync' has been rejected")), 'daten');
+});
+
+test('Begrenzte Map wirft das älteste Element raus', () => {
+  const m = new BegrenzteMap<string, number>(2);
+  m.set('a', 1).set('b', 2).set('a', 3).set('c', 4); // a wurde neu eingereiht → b fliegt
+  assert.deepEqual([m.has('a'), m.has('b'), m.has('c'), m.size], [true, false, true, 2]);
 });

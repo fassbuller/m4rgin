@@ -11,6 +11,7 @@ import { felderAusRollen, OcrZeile, Rolle, schaetzeRollen, SuchFelder } from '..
 import { kiTitelseite } from '../lib/ki';
 import { texterkennen, texterkennungVerfuegbar } from '../lib/texterkennung';
 import { rueckmeldung } from '../lib/haptik';
+import { fehlerText } from '../lib/fehler';
 import { MarktErgebnis } from '../lib/markt';
 import { euro, PreisErgebnis } from '../lib/preis';
 import { Signal } from '../lib/trend';
@@ -106,22 +107,36 @@ export function ScanScreen({ aktiv, einst, stapel, onStapelGeaendert, onZumStape
     setVorgang(null);
   }, []);
 
-  const aendere = (patch: Partial<Vorgang>, logId?: number | null) =>
-    setVorgang((v) => (v && (logId === undefined || v.logId === logId) ? { ...v, ...patch } : v));
+  /**
+   * Nur den Vorgang ändern, zu dem die Antwort gehört. `start` ist eindeutig (anders als logId, die anfangs
+   * null ist) – späte Antworten eines inzwischen ersetzten Vorgangs prallen so sicher ab.
+   */
+  const aendere = (patch: Partial<Vorgang>, start: number) =>
+    setVorgang((v) => (v && v.start === start ? { ...v, ...patch } : v));
 
   /** Titel steht fest → Markt + Trends nachladen (Karte zeigt sie, sobald sie da sind). */
   const titelGewaehlt = useCallback(
-    async (t: Titel, logId: number | null) => {
+    async (t: Titel, start: number, hinweis?: string) => {
       setTreffer(null);
-      aendere({ titel: t, laedt: false, fehler: undefined, marktLaedt: true }, logId);
+      aendere({ titel: t, laedt: false, fehler: hinweis, marktLaedt: true }, start);
       try {
         const m = await marktFuer(t, einst);
-        aendere({ markt: m, marktLaedt: false, vorlaeufig: vorlaeufig(m, t, einst.regeln) }, logId);
+        const alleAus = m.status.length > 0 && m.status.every((x) => !x.ok);
+        aendere(
+          {
+            markt: m,
+            marktLaedt: false,
+            vorlaeufig: vorlaeufig(m, t, einst.regeln),
+            // Alle Quellen gescheitert → sagen, warum kein Preis kommt, statt still „kein Preis“
+            ...(alleAus ? { fehler: fehlerText(new Error(m.status[0].fehler ?? ''), 'Die Preisabfrage') } : {}),
+          },
+          start,
+        );
       } catch (e) {
-        aendere({ marktLaedt: false }, logId);
+        aendere({ marktLaedt: false, fehler: fehlerText(e, 'Die Preisabfrage') }, start);
       }
       trendsFuer(t, einst)
-        .then((tr) => aendere({ trends: tr }, logId))
+        .then((tr) => aendere({ trends: tr }, start))
         .catch(() => undefined);
     },
     [einst],
@@ -140,18 +155,27 @@ export function ScanScreen({ aktiv, einst, stapel, onStapelGeaendert, onZumStape
 
   const starteIsbn = useCallback(
     async (isbn: string, methode: Methode) => {
-      neuerVorgang(methode, isbn);
-      const liste = await sucheIsbn(isbn).catch(() => [] as Titel[]);
-      const logId = await logSuche(methode, isbn, liste.length);
-      setVorgang((v) => (v && v.suchbegriff === isbn ? { ...v, logId } : v));
+      const { start } = neuerVorgang(methode, isbn);
+      let suchFehler: unknown = null;
+      const liste = await sucheIsbn(isbn).catch((e) => {
+        suchFehler = e;
+        return [] as Titel[];
+      });
+      // Protokollieren darf scheitern, ohne den Vorgang zu stoppen
+      const logId = await logSuche(methode, isbn, liste.length).catch(() => null);
+      aendere({ logId }, start);
       // Auch ohne Titeldaten lohnt die Marktabfrage per ISBN
       const t: Titel = liste[0] ?? { quelle: 'manuell', titel: `ISBN ${isbn}`, autoren: [], isbn };
       if (liste.length > 1 && !einst.schnellmodus) {
         setTreffer({ liste, gesamt: liste.length, ohne: t });
-        aendere({ laedt: false }, logId);
+        aendere({ laedt: false }, start);
       } else {
-        if (liste.length === 0) aendere({ fehler: 'Nicht in DNB/Open Library – Preise per ISBN:' }, logId);
-        titelGewaehlt(t, logId);
+        const hinweis = suchFehler
+          ? `${fehlerText(suchFehler, 'Die Titelsuche')} Preise per ISBN:`
+          : liste.length === 0
+            ? 'Nicht in DNB/Open Library – Preise per ISBN:'
+            : undefined;
+        titelGewaehlt(t, start, hinweis);
       }
     },
     [einst, titelGewaehlt],
@@ -160,24 +184,21 @@ export function ScanScreen({ aktiv, einst, stapel, onStapelGeaendert, onZumStape
   const starteFelder = useCallback(
     async (f: SuchFelder, methode: Methode) => {
       const anzeige = [f.autor, f.titel].filter(Boolean).join(': ') || f.frei || '…';
-      neuerVorgang(methode, anzeige);
+      const { start } = neuerVorgang(methode, anzeige);
       const ohne: Titel = { quelle: 'manuell', titel: f.titel ?? anzeige, autoren: f.autor ? [f.autor] : [], jahr: f.jahr };
       try {
         const r = await sucheFelder(f);
-        const logId = await logSuche(methode, r.cql ?? anzeige, r.treffer.length);
-        setVorgang((v) => (v ? { ...v, logId, laedt: false } : v));
+        const logId = await logSuche(methode, r.cql ?? anzeige, r.treffer.length).catch(() => null);
+        aendere({ logId, laedt: false }, start);
         if (r.treffer.length === 0) {
           // Viele Antiquariatsbücher (Vereinsschriften, Privatdrucke, vor 1913) fehlen in der DNB –
           // dann gleich per Titel bei den Preisquellen suchen statt eine leere Liste zu zeigen.
-          titelGewaehlt(ohne, logId);
-          aendere({ fehler: 'Nicht in der DNB – Angebote per Titel gesucht:' }, logId);
-        } else if (r.treffer.length === 1 && einst.schnellmodus) titelGewaehlt(r.treffer[0], logId);
+          titelGewaehlt(ohne, start, 'Nicht in der DNB – Angebote per Titel gesucht:');
+        } else if (r.treffer.length === 1 && einst.schnellmodus) titelGewaehlt(r.treffer[0], start);
         else setTreffer({ liste: r.treffer, gesamt: r.gesamt, ohne });
       } catch (e) {
         // DNB nicht erreichbar: Preise trotzdem per Titel abfragen
-        const logId = vorgangRef.current?.logId ?? null;
-        titelGewaehlt(ohne, logId);
-        aendere({ fehler: `DNB-Suche fehlgeschlagen (${(e as Error).message}) – Angebote per Titel gesucht:` }, logId);
+        titelGewaehlt(ohne, start, `${fehlerText(e, 'Die DNB-Suche')} Angebote per Titel gesucht:`);
       }
     },
     [einst, titelGewaehlt],
@@ -219,7 +240,7 @@ export function ScanScreen({ aktiv, einst, stapel, onStapelGeaendert, onZumStape
       );
       setOcr({ uri: bild.uri, base64: bild.base64, zeilen, rollen: schaetzeRollen(zeilen) });
     } catch (e) {
-      Alert.alert('Foto/Texterkennung fehlgeschlagen', String((e as Error).message ?? e));
+      Alert.alert('Foto/Texterkennung', fehlerText(e, 'Die Texterkennung'));
     } finally {
       setBeschaeftigt(false);
     }
@@ -242,7 +263,7 @@ export function ScanScreen({ aktiv, einst, stapel, onStapelGeaendert, onZumStape
       if (isbn) starteIsbn(isbn, 'foto_ki');
       else starteFelder(a, 'foto_ki');
     } catch (e) {
-      Alert.alert('KI fehlgeschlagen', String((e as Error).message ?? e));
+      Alert.alert('KI', fehlerText(e, 'Die KI-Abfrage'));
     } finally {
       setBeschaeftigt(false);
     }
@@ -436,8 +457,8 @@ export function ScanScreen({ aktiv, einst, stapel, onStapelGeaendert, onZumStape
         <TrefferListe
           treffer={treffer.liste}
           gesamt={treffer.gesamt}
-          onWaehle={(t) => titelGewaehlt(t, vorgangRef.current?.logId ?? null)}
-          onOhneTreffer={() => titelGewaehlt(treffer.ohne, vorgangRef.current?.logId ?? null)}
+          onWaehle={(t) => vorgangRef.current && titelGewaehlt(t, vorgangRef.current.start)}
+          onOhneTreffer={() => vorgangRef.current && titelGewaehlt(treffer.ohne, vorgangRef.current.start)}
           onAbbrechen={() => {
             setTreffer(null);
             vorgangBeenden();

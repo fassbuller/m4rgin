@@ -53,6 +53,10 @@ export function EinstellungenScreen({ einst, onGespeichert }: Props) {
           <Feld label="Partner-ID (pid)" wert={e.booklooker.pid} setze={(v) => setE({ ...e, booklooker: { ...e.booklooker, pid: v.trim() } })} />
           <Schalter label="eurobuch" wert={e.eurobuch.aktiv} setze={(v) => setE({ ...e, eurobuch: { ...e.eurobuch, aktiv: v } })} />
           <Feld label="Benutzer" wert={e.eurobuch.benutzer} setze={(v) => setE({ ...e, eurobuch: { ...e.eurobuch, benutzer: v.trim() } })} />
+          {e.eurobuch.benutzer === 'test' && (
+            <Text style={[st.klein, { color: F.rot }]}>Testzugang: liefert nur wenige Abfragen pro Tag und dann „0 Angebote“. Echten Partnerzugang bei eurobuch beantragen.</Text>
+          )}
+          {!e.eurobuch.benutzer && <Text style={st.klein}>Ohne Zugang ist eurobuch aus. Passwörter liegen im sicheren Speicher des Geräts.</Text>}
           <Feld label="Passwort" wert={e.eurobuch.passwort} geheim setze={(v) => setE({ ...e, eurobuch: { ...e.eurobuch, passwort: v } })} />
           <Schalter label="eBay" wert={e.ebay.aktiv} setze={(v) => setE({ ...e, ebay: { ...e.ebay, aktiv: v } })} />
           <Feld label="Client-ID" wert={e.ebay.clientId} setze={(v) => setE({ ...e, ebay: { ...e.ebay, clientId: v.trim() } })} />

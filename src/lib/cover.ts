@@ -37,7 +37,32 @@ export function coverEinstellen(schluessel: string) {
   googleSchluessel = schluessel;
 }
 
-const googleCache = new Map<string, Promise<string | null>>();
+/** Map mit Obergrenze: das älteste Element fliegt raus – lange Sitzungen wachsen sonst unbegrenzt. */
+// Bewusst als Hülle statt `extends Map`: eingebaute Klassen zu erweitern ist in JS-Engines heikel.
+export class BegrenzteMap<K, V> {
+  private m = new Map<K, V>();
+  constructor(private grenze: number) {}
+  get(k: K) {
+    return this.m.get(k);
+  }
+  has(k: K) {
+    return this.m.has(k);
+  }
+  delete(k: K) {
+    return this.m.delete(k);
+  }
+  get size() {
+    return this.m.size;
+  }
+  set(k: K, v: V): this {
+    this.m.delete(k); // neu einreihen = zuletzt benutzt
+    this.m.set(k, v);
+    if (this.m.size > this.grenze) this.m.delete(this.m.keys().next().value as K);
+    return this;
+  }
+}
+
+const googleCache = new BegrenzteMap<string, Promise<string | null>>(300);
 
 export function googleCover(isbn: string): Promise<string | null> {
   let p = googleCache.get(isbn);
@@ -54,4 +79,4 @@ export function googleCover(isbn: string): Promise<string | null> {
 }
 
 /** Welche Stufe der Kette zuletzt funktioniert hat – Listen (Stapel, Verlauf) prüfen so nicht jedes Mal neu. */
-export const coverTreffer = new Map<string, string | null>();
+export const coverTreffer = new BegrenzteMap<string, string | null>(500);

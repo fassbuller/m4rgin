@@ -10,6 +10,7 @@ import { zuCsv } from './lib/csv';
 import { Angebot, MarktErgebnis } from './lib/markt';
 import { Snapshot } from './lib/trend';
 import { Einstellungen, mitStandards } from './einstellungen';
+import { geheimnisseSpeichern, mitGeheimnissen, ohneGeheimnisse } from './geheim';
 
 export type Methode = 'barcode' | 'isbn_getippt' | 'foto_ocr' | 'foto_isbn' | 'foto_ki' | 'manuell';
 export type Aktion = 'gesucht' | 'ausgepreist' | 'verworfen';
@@ -56,7 +57,13 @@ export interface LogEintrag {
 let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
 export function db(): Promise<SQLite.SQLiteDatabase> {
-  if (!dbPromise) dbPromise = init();
+  if (!dbPromise) {
+    dbPromise = init().catch((e) => {
+      // Ein fehlgeschlagenes Öffnen nicht merken – sonst scheitert jede spätere Abfrage bis zum Neustart
+      dbPromise = null;
+      throw e;
+    });
+  }
   return dbPromise;
 }
 
@@ -515,13 +522,41 @@ export async function exportCsv(nurStapel = false) {
 export async function einstellungenLaden(): Promise<Einstellungen> {
   const d = await db();
   const r = await d.getFirstAsync<{ v: string }>("SELECT v FROM kv WHERE k='einstellungen'");
-  return mitStandards(r ? JSON.parse(r.v) : null);
+  let gespeichert: Partial<Einstellungen> | null = null;
+  try {
+    gespeichert = r ? JSON.parse(r.v) : null;
+  } catch {
+    // Kaputter Eintrag (z. B. abgebrochenes Schreiben) → Standardwerte statt Absturz
+    gespeichert = null;
+  }
+  const e = await mitGeheimnissen(mitStandards(gespeichert));
+  // Ältere Stände hatten Passwörter im JSON → einmalig in den sicheren Speicher umziehen
+  const alt = mitStandards(gespeichert);
+  if (alt.eurobuch.passwort || alt.ebay.clientSecret || alt.ki.apiKey || alt.googleBooksKey) {
+    await einstellungenSpeichern(e).catch(() => undefined);
+  }
+  return e;
 }
 
 export async function einstellungenSpeichern(e: Einstellungen) {
   const d = await db();
+  // Geheimnisse in den sicheren Speicher, der Rest (ohne sie) nach SQLite
+  await geheimnisseSpeichern(e);
   await d.runAsync(
     "INSERT INTO kv (k, v) VALUES ('einstellungen', ?) ON CONFLICT(k) DO UPDATE SET v=excluded.v",
-    JSON.stringify(e),
+    JSON.stringify(ohneGeheimnisse(e)),
   );
+}
+
+// ---------- Kleine Merker (Onboarding gesehen, Sortierung …) ----------
+
+export async function merkerLaden(k: string): Promise<string | null> {
+  const d = await db();
+  const r = await d.getFirstAsync<{ v: string }>('SELECT v FROM kv WHERE k = ?', `merker.${k}`);
+  return r?.v ?? null;
+}
+
+export async function merkerSpeichern(k: string, v: string) {
+  const d = await db();
+  await d.runAsync('INSERT INTO kv (k, v) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET v=excluded.v', `merker.${k}`, v);
 }

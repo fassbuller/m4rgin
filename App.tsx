@@ -4,7 +4,9 @@ import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { Text } from './src/components/Schrift';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Einstellungen } from './src/einstellungen';
+import { Einstellungen, mitStandards } from './src/einstellungen';
+import { Fangnetz } from './src/components/Fangnetz';
+import { fehlerText } from './src/lib/fehler';
 import { einstellungenLaden, LogEintrag, Stapel, stapelUebersicht } from './src/db';
 import { ScanScreen } from './src/screens/ScanScreen';
 import { StapelScreen } from './src/screens/StapelScreen';
@@ -34,7 +36,9 @@ const REITER: { id: Reiter; label: string; icon: IconName }[] = [
 export default function App() {
   return (
     <SafeAreaProvider>
-      <Hauptfenster />
+      <Fangnetz>
+        <Hauptfenster />
+      </Fangnetz>
     </SafeAreaProvider>
   );
 }
@@ -45,6 +49,7 @@ function Hauptfenster() {
   const [einst, setEinst] = useState<Einstellungen | null>(null);
   const [stapel, setStapel] = useState<LogEintrag[]>([]);
   const [stapelKopf, setStapelKopf] = useState<Stapel | null>(null);
+  const [startHinweis, setStartHinweis] = useState<string | null>(null);
   const [schriftenDa, schriftFehler] = useFonts({
     BricolageGrotesque_400Regular,
     BricolageGrotesque_600SemiBold,
@@ -62,7 +67,13 @@ function Hauptfenster() {
   }, []);
 
   useEffect(() => {
-    einstellungenLaden().then(setEinst);
+    // Kein Endlos-Spinner: Lassen sich die Einstellungen nicht laden, mit Standardwerten starten und es sagen
+    einstellungenLaden()
+      .then(setEinst)
+      .catch((e) => {
+        setEinst(mitStandards(null));
+        setStartHinweis(`${fehlerText(e, 'Das Laden der Einstellungen')} Es gelten vorerst die Standardwerte.`);
+      });
     stapelNeu();
   }, []);
 

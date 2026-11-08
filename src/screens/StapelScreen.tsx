@@ -298,6 +298,9 @@ function Zeile({ e, einst, onOeffnen, onSchnell, onEntfernen }: {
   // Wischen nach links legt „Entfernen“ frei; weit genug → Rückfrage, sonst zurückschnappen
   const x = useRef(new Animated.Value(0)).current;
   const zurueck = () => Animated.spring(x, { toValue: 0, useNativeDriver: true }).start();
+  // Immer die aktuelle Entfernen-Funktion nutzen – der PanResponder selbst wird nur einmal angelegt
+  const entfernenRef = useRef(onEntfernen);
+  entfernenRef.current = onEntfernen;
   const wisch = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, g) => g.dx < -12 && Math.abs(g.dx) > Math.abs(g.dy) * 1.5,
@@ -305,7 +308,7 @@ function Zeile({ e, einst, onOeffnen, onSchnell, onEntfernen }: {
       onPanResponderRelease: (_, g) => {
         if (g.dx < -110) {
           Animated.timing(x, { toValue: -140, duration: 120, useNativeDriver: true }).start();
-          onEntfernen(zurueck);
+          entfernenRef.current(zurueck);
         } else zurueck();
       },
       onPanResponderTerminate: zurueck,
