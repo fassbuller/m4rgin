@@ -104,6 +104,11 @@ export function regelnMitStandards(gespeichert?: Partial<PreisRegeln> | null): P
       neuBisJahre: Math.round(geprueft(s.knappheit?.neuBisJahre, d.knappheit.neuBisJahre, 0, 50)),
     },
     pruefMerkmale: s.pruefMerkmale?.length ? s.pruefMerkmale : d.pruefMerkmale,
+    robust: {
+      ausreisserUebergehen: s.robust?.ausreisserUebergehen ?? d.robust.ausreisserUebergehen,
+      grosshaendlerUebergehen: s.robust?.grosshaendlerUebergehen ?? d.robust.grosshaendlerUebergehen,
+      mittelAusZweiAb: Math.round(geprueft(s.robust?.mittelAusZweiAb, d.robust.mittelAusZweiAb, 0, 100)),
+    },
   };
 }
 

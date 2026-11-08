@@ -7,7 +7,8 @@
     "start": "expo start --dev-client",
     "android": "expo run:android",
     "apk": "eas build -p android --profile preview",
-    "test": "tsx --test test/lib.test.ts",
+    "test": "tsx --test test/lib.test.ts test/robust.test.ts test/testset.test.ts",
+    "testset": "tsx scripts/testset.ts",
     "typecheck": "tsc --noEmit",
     "ios": "expo run:ios"
   },

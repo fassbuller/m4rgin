@@ -87,6 +87,7 @@ export function parseEurobuch(xml: string, versandPauschale: number): Angebot[] 
       land: a.country || undefined,
       url: a.url || undefined,
       titel: [a.author, a.title].filter(Boolean).join(': ') || undefined,
+      autor: a.author || undefined,
       neu: a.neubuch === '1' || undefined,
     });
   }

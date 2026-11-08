@@ -1,0 +1,463 @@
+[
+ {
+  "name": "Kehlmann – Die Vermessung der Welt (Ausreißer 1 €)",
+  "notiz": "Konstruiert. Ein Angebot für 1 € (falsch eingestellt) zwischen lauter 6–10-€-Angeboten.",
+  "titel": {
+   "titel": "Die Vermessung der Welt",
+   "autor": "Kehlmann, Daniel",
+   "jahr": "2005",
+   "isbn": "9783498035280",
+   "einband": "Pp."
+  },
+  "zustand": "gut",
+  "angebote": [
+   {
+    "quelle": "booklooker",
+    "plattform": "booklooker",
+    "haendler": "falscheinsteller",
+    "preis": 0.01,
+    "versand": 0.99,
+    "versandGeschaetzt": false,
+    "gesamt": 1,
+    "jahr": "2005"
+   },
+   {
+    "quelle": "booklooker",
+    "plattform": "booklooker",
+    "haendler": "Antiquariat A",
+    "preis": 4.5,
+    "versand": 2,
+    "versandGeschaetzt": false,
+    "gesamt": 6.5,
+    "jahr": "2005"
+   },
+   {
+    "quelle": "eurobuch",
+    "plattform": "ZVAB",
+    "haendler": "Antiquariat B",
+    "preis": 4,
+    "versand": 3,
+    "versandGeschaetzt": false,
+    "gesamt": 7,
+    "jahr": "2005"
+   },
+   {
+    "quelle": "eurobuch",
+    "plattform": "AbeBooks",
+    "haendler": "Antiquariat C",
+    "preis": 5.5,
+    "versand": 2,
+    "versandGeschaetzt": false,
+    "gesamt": 7.5,
+    "jahr": "2005"
+   },
+   {
+    "quelle": "ebay",
+    "plattform": "eBay",
+    "haendler": "leser42",
+    "preis": 6,
+    "versand": 2,
+    "versandGeschaetzt": false,
+    "gesamt": 8,
+    "jahr": "2005"
+   },
+   {
+    "quelle": "booklooker",
+    "plattform": "booklooker",
+    "haendler": "Antiquariat D",
+    "preis": 7,
+    "versand": 2,
+    "versandGeschaetzt": false,
+    "gesamt": 9,
+    "jahr": "2005"
+   }
+  ],
+  "nichtAlsVergleich": [
+   "falscheinsteller"
+  ],
+  "erwartet": {
+   "min": 5.5,
+   "max": 6.5
+  }
+ },
+ {
+  "name": "Herrndorf – Tschick (Mängelexemplar ganz unten)",
+  "notiz": "Konstruiert. Das günstigste Angebot ist ein Mängelexemplar.",
+  "titel": {
+   "titel": "Tschick",
+   "autor": "Herrndorf, Wolfgang",
+   "jahr": "2010",
+   "isbn": "9783871346071",
+   "einband": "Pp."
+  },
+  "zustand": "sehr_gut",
+  "angebote": [
+   {
+    "quelle": "booklooker",
+    "plattform": "booklooker",
+    "haendler": "Restposten24",
+    "preis": 1.5,
+    "versand": 1.9,
+    "versandGeschaetzt": false,
+    "gesamt": 3.4,
+    "zustandText": "Mängelexemplar, Stempel auf dem Schnitt",
+    "jahr": "2010"
+   },
+   {
+    "quelle": "eurobuch",
+    "plattform": "ZVAB",
+    "haendler": "Bücherwurm",
+    "preis": 5,
+    "versand": 3,
+    "versandGeschaetzt": false,
+    "gesamt": 8,
+    "jahr": "2010"
+   },
+   {
+    "quelle": "ebay",
+    "plattform": "eBay",
+    "haendler": "lisa_m",
+    "preis": 7,
+    "versand": 2,
+    "versandGeschaetzt": false,
+    "gesamt": 9,
+    "jahr": "2010"
+   },
+   {
+    "quelle": "booklooker",
+    "plattform": "booklooker",
+    "haendler": "Antiquariat am Markt",
+    "preis": 7.5,
+    "versand": 2,
+    "versandGeschaetzt": false,
+    "gesamt": 9.5,
+    "jahr": "2010"
+   }
+  ],
+  "nichtAlsVergleich": [
+   "Restposten24"
+  ],
+  "erwartet": {
+   "min": 8.5,
+   "max": 9.5
+  }
+ },
+ {
+  "name": "Kafka – Der Process (Titelsuche: Hörbuch und anderes Buch)",
+  "notiz": "Konstruiert. Ohne ISBN gesucht: ein Hörbuch und ein anderer Kafka-Titel sind günstiger als das Buch.",
+  "titel": {
+   "titel": "Der Process",
+   "autor": "Kafka, Franz",
+   "jahr": "1925"
+  },
+  "zustand": "gut",
+  "angebote": [
+   {
+    "quelle": "ebay",
+    "plattform": "eBay",
+    "haendler": "audiofan",
+    "preis": 2,
+    "versand": 1.6,
+    "versandGeschaetzt": false,
+    "gesamt": 3.6,
+    "titel": "Kafka Der Process Hörbuch 4 CDs"
+   },
+   {
+    "quelle": "booklooker",
+    "plattform": "booklooker",
+    "haendler": "Leseratte",
+    "preis": 2.5,
+    "versand": 1.9,
+    "versandGeschaetzt": false,
+    "gesamt": 4.4,
+    "titel": "Kafka, Franz: Das Schloss",
+    "autor": "Kafka, Franz"
+   },
+   {
+    "quelle": "booklooker",
+    "plattform": "booklooker",
+    "haendler": "Antiquariat Prag",
+    "preis": 4,
+    "versand": 2,
+    "versandGeschaetzt": false,
+    "gesamt": 6,
+    "titel": "Kafka, Franz: Der Process. Roman",
+    "autor": "Kafka, Franz"
+   },
+   {
+    "quelle": "eurobuch",
+    "plattform": "ZVAB",
+    "haendler": "Buchhandlung K.",
+    "preis": 4,
+    "versand": 3,
+    "versandGeschaetzt": false,
+    "gesamt": 7,
+    "titel": "Kafka, Franz: Der Process",
+    "autor": "Kafka, Franz"
+   },
+   {
+    "quelle": "eurobuch",
+    "plattform": "AbeBooks",
+    "haendler": "Altbuch",
+    "preis": 6,
+    "versand": 2,
+    "versandGeschaetzt": false,
+    "gesamt": 8,
+    "titel": "Der Process",
+    "autor": "Kafka, Franz"
+   }
+  ],
+  "nichtAlsVergleich": [
+   "audiofan",
+   "Leseratte"
+  ],
+  "erwartet": {
+   "min": 5.5,
+   "max": 6.5
+  }
+ },
+ {
+  "name": "Hosseini – Drachenläufer (momox und rebuy unten)",
+  "notiz": "Konstruiert. Massenware; Großhändler unterbieten alle.",
+  "titel": {
+   "titel": "Drachenläufer",
+   "autor": "Hosseini, Khaled",
+   "jahr": "2006",
+   "isbn": "9783833303609",
+   "einband": "kart."
+  },
+  "zustand": "gut",
+  "angebote": [
+   {
+    "quelle": "booklooker",
+    "plattform": "booklooker",
+    "haendler": "momox",
+    "preis": 1.49,
+    "versand": 2,
+    "versandGeschaetzt": false,
+    "gesamt": 3.49,
+    "jahr": "2006"
+   },
+   {
+    "quelle": "eurobuch",
+    "plattform": "eurobuch",
+    "haendler": "reBuy reCommerce GmbH",
+    "preis": 1.99,
+    "versand": 2,
+    "versandGeschaetzt": false,
+    "gesamt": 3.99,
+    "jahr": "2006"
+   },
+   {
+    "quelle": "booklooker",
+    "plattform": "booklooker",
+    "haendler": "Leselust",
+    "preis": 3,
+    "versand": 2,
+    "versandGeschaetzt": false,
+    "gesamt": 5,
+    "jahr": "2006"
+   },
+   {
+    "quelle": "ebay",
+    "plattform": "eBay",
+    "haendler": "peter_k",
+    "preis": 3.5,
+    "versand": 2,
+    "versandGeschaetzt": false,
+    "gesamt": 5.5,
+    "jahr": "2006"
+   },
+   {
+    "quelle": "booklooker",
+    "plattform": "booklooker",
+    "haendler": "Antiquariat Nord",
+    "preis": 4,
+    "versand": 2,
+    "versandGeschaetzt": false,
+    "gesamt": 6,
+    "jahr": "2006"
+   }
+  ],
+  "nichtAlsVergleich": [
+   "momox",
+   "reBuy reCommerce GmbH"
+  ],
+  "erwartet": {
+   "min": 4.5,
+   "max": 5.5
+  }
+ },
+ {
+  "name": "Ransmayr – Die letzte Welt (gebunden gesucht, Taschenbücher günstiger)",
+  "notiz": "Konstruiert. Gesucht ist die gebundene Ausgabe; Taschenbücher (eurobuch meldet den Einband) sind kein Vergleich.",
+  "titel": {
+   "titel": "Die letzte Welt",
+   "autor": "Ransmayr, Christoph",
+   "jahr": "1988",
+   "isbn": "9783860220016",
+   "einband": "Pp."
+  },
+  "zustand": "gut",
+  "angebote": [
+   {
+    "quelle": "eurobuch",
+    "plattform": "ZVAB",
+    "haendler": "TB-Laden",
+    "preis": 1,
+    "versand": 3,
+    "versandGeschaetzt": false,
+    "gesamt": 4,
+    "gebunden": false
+   },
+   {
+    "quelle": "eurobuch",
+    "plattform": "AbeBooks",
+    "haendler": "Taschenbuchkiste",
+    "preis": 1.5,
+    "versand": 3,
+    "versandGeschaetzt": false,
+    "gesamt": 4.5,
+    "gebunden": false
+   },
+   {
+    "quelle": "eurobuch",
+    "plattform": "ZVAB",
+    "haendler": "Antiquariat Wien",
+    "preis": 9,
+    "versand": 3,
+    "versandGeschaetzt": false,
+    "gesamt": 12,
+    "gebunden": true
+   },
+   {
+    "quelle": "booklooker",
+    "plattform": "booklooker",
+    "haendler": "Buchfreund",
+    "preis": 11,
+    "versand": 2,
+    "versandGeschaetzt": false,
+    "gesamt": 13
+   },
+   {
+    "quelle": "eurobuch",
+    "plattform": "ZVAB",
+    "haendler": "Antiquariat Graz",
+    "preis": 11,
+    "versand": 3,
+    "versandGeschaetzt": false,
+    "gesamt": 14,
+    "gebunden": true
+   }
+  ],
+  "nichtAlsVergleich": [
+   "TB-Laden",
+   "Taschenbuchkiste"
+  ],
+  "erwartet": {
+   "min": 11.5,
+   "max": 12.5
+  }
+ },
+ {
+  "name": "Seltener Titel – dasselbe Exemplar auf ZVAB und AbeBooks",
+  "notiz": "Konstruiert. Zwei Händler, je auf beiden Plattformen: Es gibt 2 Angebote, nicht 4 (Knappheit).",
+  "titel": {
+   "titel": "Das Lächeln der Medusa",
+   "autor": "Muster, Max",
+   "jahr": "1961",
+   "isbn": "9783000000002"
+  },
+  "zustand": "gut",
+  "angebote": [
+   {
+    "quelle": "eurobuch",
+    "plattform": "ZVAB",
+    "haendler": "Antiquariat Kühn",
+    "preis": 6,
+    "versand": 3,
+    "versandGeschaetzt": false,
+    "gesamt": 9
+   },
+   {
+    "quelle": "eurobuch",
+    "plattform": "AbeBooks",
+    "haendler": "Antiquariat Kühn",
+    "preis": 6,
+    "versand": 3.5,
+    "versandGeschaetzt": false,
+    "gesamt": 9.5
+   },
+   {
+    "quelle": "eurobuch",
+    "plattform": "ZVAB",
+    "haendler": "Antiquariat Lenz",
+    "preis": 8,
+    "versand": 3,
+    "versandGeschaetzt": false,
+    "gesamt": 11
+   },
+   {
+    "quelle": "eurobuch",
+    "plattform": "AbeBooks",
+    "haendler": "Antiquariat Lenz",
+    "preis": 8,
+    "versand": 3,
+    "versandGeschaetzt": false,
+    "gesamt": 11
+   }
+  ],
+  "erwartet": {
+   "min": 9.5,
+   "max": 10.5
+  }
+ },
+ {
+  "name": "Lenz – Schweigeminute (normaler Fall, nichts zu filtern)",
+  "notiz": "Konstruiert. Kontrollfall: Die Prüfung darf nichts verändern.",
+  "titel": {
+   "titel": "Schweigeminute",
+   "autor": "Lenz, Siegfried",
+   "jahr": "2008",
+   "isbn": "9783455042566",
+   "einband": "Pp."
+  },
+  "zustand": "gut",
+  "angebote": [
+   {
+    "quelle": "booklooker",
+    "plattform": "booklooker",
+    "haendler": "Antiquariat Elbe",
+    "preis": 2.5,
+    "versand": 2,
+    "versandGeschaetzt": false,
+    "gesamt": 4.5,
+    "jahr": "2008"
+   },
+   {
+    "quelle": "eurobuch",
+    "plattform": "ZVAB",
+    "haendler": "Buch & Kunst",
+    "preis": 2,
+    "versand": 3,
+    "versandGeschaetzt": false,
+    "gesamt": 5,
+    "jahr": "2008"
+   },
+   {
+    "quelle": "ebay",
+    "plattform": "eBay",
+    "haendler": "hanseat",
+    "preis": 3.5,
+    "versand": 2,
+    "versandGeschaetzt": false,
+    "gesamt": 5.5,
+    "jahr": "2008"
+   }
+  ],
+  "erwartet": {
+   "min": 4,
+   "max": 5
+  }
+ }
+]

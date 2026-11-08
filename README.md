@@ -14,6 +14,9 @@ App für den Ladenbetrieb der Buchgenossenschaft Hennwack: Buch scannen → Tite
 
 - **Titel:** Deutsche Nationalbibliothek, sonst Open Library. Cover: DNB → Google Books → Open Library.
 - **Markt:** booklooker, eurobuch (ZVAB, AbeBooks …), eBay – parallel, inkl. Versand.
+- **Prüfung vor dem Preis:** Mängelexemplare, Hörbücher/CDs, Sets, nur Umschläge, teurer Auslandsversand, ignorierte Händler und – bei Titelsuche – fremde Titel/Autoren werden aussortiert (sichtbar, zurückholbar). Doppelte Exemplare (ZVAB + AbeBooks) zählen einmal. Ausreißer nach unten und Großhändler (momox, rebuy …) werden als Vergleich übergangen; im Laden ab 4 Angeboten zählt das Mittel der zwei günstigsten. Ausfallende Quellen bekommen einen zweiten Versuch, ISBN-Suchen ohne Treffer laufen noch einmal mit der ISBN-10.
+- **Konfidenz-Ampel** (grün/gelb/rot) aus Angebotszahl, Streuung, Quellen, Suchart und Ausgabe. Bei Rot gibt es keine Gold-/Schwarz-Enthüllung.
+- **Korrektur-Protokoll:** Preis von Hand geändert, anderer Vergleich, Angebot aussortiert → gespeichert und in den Einstellungen ausgewertet.
 - **Trends:** eigene Marktverläufe, Wikipedia-Interesse, Neuauflagen.
 - **KI (optional, lokal):** Ollama für Titelseiten und Kurzbeschreibungen.
 - Zugangsdaten liegen im sicheren Speicher des Geräts, nicht in der Datenbank.
@@ -22,9 +25,12 @@ App für den Ladenbetrieb der Buchgenossenschaft Hennwack: Buch scannen → Tite
 
 ```bash
 npm install
-npm test            # Fachlogik (node:test)
+npm test            # Fachlogik (node:test) inkl. Testset
+npm run testset     # Bericht: Preis alt (ohne Prüfung) gegen neu, je Testfall
 npx tsc --noEmit    # Typprüfung
 ```
+
+**Testset** (`test/testset/*.json`): Marktlagen mit erwartetem Preisbereich. Neue Fälle entstehen in der App über „Als Testfall teilen“ im Preis-Blatt (JSON ohne Links) und werden einfach als Datei abgelegt. Die mitgelieferten Fälle in `konstruiert.json` sind erfundene, aber typische Problemfälle.
 
 **iPhone (Expo Go):** `powershell -ExecutionPolicy Bypass -File scripts\expo-tunnel.ps1` – fragt einen Expo-Zugangstoken ab, startet Metro mit Tunnel. In Expo Go fehlt nur die Titelseiten-Texterkennung.
 

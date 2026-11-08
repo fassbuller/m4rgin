@@ -42,3 +42,14 @@ export function findeIsbnInText(text: string): string | null {
   }
   return null;
 }
+
+/** ISBN-13 mit 978 → alte ISBN-10 (ältere Angebote sind oft nur so eingestellt); 979er haben keine. */
+export function isbn13zu10(isbn13: string): string | null {
+  const d = nurZiffern(isbn13);
+  if (!istIsbn13(d) || !d.startsWith('978')) return null;
+  const kern = d.slice(3, 12);
+  let sum = 0;
+  for (let i = 0; i < 9; i++) sum += Number(kern[i]) * (10 - i);
+  const p = (11 - (sum % 11)) % 11;
+  return kern + (p === 10 ? 'X' : String(p));
+}

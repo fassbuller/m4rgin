@@ -10,6 +10,7 @@
 
 import { Angebot, PreisQuelle, runde2 } from '../markt';
 import { dekodiere } from '../dnb';
+import { bindungAus } from '../ausgaben';
 
 export interface BooklookerZugang {
   aktiv: boolean;
@@ -76,6 +77,12 @@ export function angebotsBloecke(xml: string): string[] {
   return xml.split(/(?=<DetailLinkUrl>)/i).slice(1);
 }
 
+/** „Taschenbuch“, „Hardcover“, „Gebunden“ … → true/false, sonst unbekannt */
+function gebundenAus(format?: string): boolean | undefined {
+  const b = bindungAus(format);
+  return b === 'hc' ? true : b === 'tb' ? false : undefined;
+}
+
 export function parseBooklooker(xml: string, versandPauschale: number): Angebot[] {
   const out: Angebot[] = [];
   for (const b of angebotsBloecke(xml)) {
@@ -99,6 +106,8 @@ export function parseBooklooker(xml: string, versandPauschale: number): Angebot[
       jahr: erstes(o, ['year', 'jahr', 'publicationyear'])?.match(/\d{4}/)?.[0],
       url: erstes(o, ['detaillinkurl']),
       titel: [erstes(o, ['author', 'autor']), erstes(o, ['title', 'titel'])].filter(Boolean).join(': ') || undefined,
+      autor: erstes(o, ['author', 'autor']),
+      gebunden: gebundenAus(erstes(o, ['format', 'binding', 'einband'])),
     });
   }
   return out;

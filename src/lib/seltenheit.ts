@@ -2,7 +2,9 @@
 // Grundlage sind Angebotszahl, Preis, Alter und Merkmale. Damit kein Glitzer für Fehlalarme kommt,
 // prüft ein Schutz, ob die Gründe belastbar sind – sonst gibt es nur ein gedämpftes „prüfen“.
 
-import { Merkmal } from './preis';
+import type { Merkmal } from './preis';
+import type { Ampel } from './konfidenz';
+import { SAMMEL } from './pruefung';
 
 export type Stufe = 'gewoehnlich' | 'gefragt' | 'selten' | 'raritaet';
 export const STUFEN: Stufe[] = ['gewoehnlich', 'gefragt', 'selten', 'raritaet'];
@@ -82,6 +84,8 @@ export interface SeltenheitsEingabe {
   ueberIsbn?: boolean;
   /** Wikipedia-Interesse steigt */
   interesseHoch?: boolean;
+  /** Konfidenz-Ampel des Preises: Bei Rot gibt es keine bestätigte Seltenheit aus Zahl oder Preis */
+  konfidenz?: Ampel;
 }
 
 export interface Seltenheit {
@@ -100,9 +104,6 @@ export interface Seltenheit {
 
 const rang = (s: Stufe) => STUFEN.indexOf(s);
 const max = (a: Stufe, b: Stufe) => (rang(a) >= rang(b) ? a : b);
-
-/** Sammelangebote treiben Preise hoch, ohne dass das einzelne Buch selten ist. */
-const SAMMEL = /konvolut|sammlung von|\bset\b|paket|\b\d+\s*(bänden?|bde\.?|büchern?)(?![a-zäöüß])|gesamtausgabe|komplett(e|er)? (reihe|serie)|\bbd\.\s*\d+\s*[-–]\s*\d+/i;
 
 export function bewerteSeltenheit(e: SeltenheitsEingabe, r: SeltenheitsRegeln = STANDARD_SELTENHEIT): Seltenheit {
   const gruende: string[] = [];
@@ -206,6 +207,13 @@ export function bewerteSeltenheit(e: SeltenheitsEingabe, r: SeltenheitsRegeln = 
       vorbehalte.push('Kein Vergleichsangebot – Preis ist eine Schätzung');
       preisBelastbar = false;
     }
+  }
+
+  // 3. Die ganze Preisermittlung ist unsicher (Ampel rot) → weder Zahl noch Preis tragen eine Enthüllung
+  if (e.konfidenz === 'rot' && (zahlBelastbar || preisBelastbar)) {
+    vorbehalte.push('Preisermittlung unsicher (Ampel rot) – erst prüfen');
+    zahlBelastbar = false;
+    preisBelastbar = false;
   }
 
   let stufe = max(max(nachZahl, nachPreis), nachMerkmal);

@@ -16,7 +16,8 @@ import { MarktErgebnis } from '../lib/markt';
 import { euro, KATEGORIE_LABEL, PreisErgebnis } from '../lib/preis';
 import { Signal } from '../lib/trend';
 import { Einstellungen } from '../einstellungen';
-import { LogEintrag, logAuspreisen, logSuche, logVerworfen, Methode } from '../db';
+import { korrekturSpeichern, LogEintrag, logAuspreisen, logSuche, logVerworfen, Methode } from '../db';
+import { bewerteKonfidenz } from '../lib/konfidenz';
 import { marktFuer, seltenheitFuer, sucheFelder, sucheIsbn, trendsFuer, vorlaeufig } from '../dienste';
 import { useBewegung } from '../components/Glanz';
 import { MitteKarte } from '../components/MitteKarte';
@@ -77,12 +78,16 @@ export function ScanScreen({ aktiv, einst, stapel, onStapelGeaendert, onZumStape
 
   // Seltenheit fürs Live-Overlay – solange noch nichts ausgepreist ist, mit dem vorläufigen Preis
   const bewegung = useBewegung(einst.seltenheit.effekte);
+  const konfidenz = useMemo(
+    () => (vorgang?.markt && !vorgang.marktLaedt ? bewerteKonfidenz({ markt: vorgang.markt, preis: vorgang.vorlaeufig }) : null),
+    [vorgang?.markt, vorgang?.marktLaedt, vorgang?.vorlaeufig],
+  );
   const seltenheit = useMemo(
     () =>
       vorgang?.titel && !vorgang.marktLaedt
-        ? seltenheitFuer(vorgang.titel, vorgang.markt, vorgang.vorlaeufig, [], vorgang.trends, einst.seltenheit)
+        ? seltenheitFuer(vorgang.titel, vorgang.markt, vorgang.vorlaeufig, [], vorgang.trends, einst.seltenheit, null, konfidenz)
         : null,
-    [vorgang?.titel, vorgang?.markt, vorgang?.marktLaedt, vorgang?.vorlaeufig, vorgang?.trends, einst.seltenheit],
+    [vorgang?.titel, vorgang?.markt, vorgang?.marktLaedt, vorgang?.vorlaeufig, vorgang?.trends, einst.seltenheit, konfidenz],
   );
   // Einmal pro Buch: bestätigt seltene Funde werden gefeiert (Vollbild-Enthüllung mit Teilen) –
   // ist die Feier aus, gibt es nur die Vibration; man merkt es so oder so, ohne hinzuschauen.
@@ -96,7 +101,8 @@ export function ScanScreen({ aktiv, einst, stapel, onStapelGeaendert, onZumStape
           titel: vorgang.titel,
           preis: vorgang.vorlaeufig?.vorschlag ?? null,
           stufe: seltenheit.bestaetigt ? seltenheit.stufe : 'gewoehnlich',
-          pruefen: !seltenheit.bestaetigt && seltenheit.stufe !== 'gewoehnlich',
+          // „prüfen“ auch bei roter Ampel: Der Preis selbst ist unsicher
+          pruefen: (!seltenheit.bestaetigt && seltenheit.stufe !== 'gewoehnlich') || konfidenz?.ampel === 'rot',
           ort: vorgang.vorlaeufig ? KATEGORIE_LABEL[vorgang.vorlaeufig.kategorie] : null,
         }
       : null;
@@ -302,19 +308,39 @@ export function ScanScreen({ aktiv, einst, stapel, onStapelGeaendert, onZumStape
     if (!v?.titel) return;
     let logId = v.logId;
     if (logId == null) logId = await logSuche(v.methode, v.suchbegriff, 0);
+    const markt = d.markt ?? v.markt;
     await logAuspreisen(logId, { ...v.titel, neupreis: d.neupreis ?? undefined }, {
-      vergleichspreis: d.anker?.gesamt ?? null,
-      anzahlAngebote: v.markt?.lage.anzahl ?? null,
+      vergleichspreis: d.ergebnis.vergleichspreis ?? d.anker?.gesamt ?? null,
+      anzahlAngebote: markt?.lage.anzahl ?? null,
       zustand: d.zustand,
       merkmale: d.merkmale,
       vorschlag: d.ergebnis.vorschlag,
       endpreis: d.endpreis,
       kategorie: d.ergebnis.kategorie,
       dauerMs: Date.now() - v.start,
-      markt: v.markt,
+      markt,
       anker: d.anker,
       trend: v.trends?.map((s) => s.text).filter(Boolean).join(' · ') || null,
     });
+    // Abweichung vom Vorschlag protokollieren – Grundlage, um die Regeln später nachzujustieren
+    const preisGeaendert = Math.abs(d.endpreis - d.ergebnis.vorschlag) >= 0.005;
+    if (preisGeaendert || d.vergleichVonHand || d.aussortiertVonHand > 0) {
+      await korrekturSpeichern({
+        log_id: logId,
+        isbn: v.titel.isbn ?? null,
+        titel: v.titel.titel,
+        vorschlag: d.ergebnis.vorschlag,
+        endpreis: d.endpreis,
+        zweig: d.ergebnis.zweig,
+        kategorie: d.ergebnis.kategorie,
+        zustand: d.zustand,
+        anzahl: markt?.lage.anzahl ?? null,
+        ampel: d.konfidenz.ampel,
+        vergleich_von_hand: d.vergleichVonHand ? 1 : 0,
+        aussortiert_von_hand: d.aussortiertVonHand,
+        art: preisGeaendert ? 'preis' : d.vergleichVonHand ? 'vergleich' : 'aussortiert',
+      }).catch(() => undefined);
+    }
     setVorgang((x) => (x ? { ...x, ausgepreist: true } : x));
     setSheetOffen(false);
     setVorgang(null);

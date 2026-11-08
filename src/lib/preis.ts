@@ -9,7 +9,8 @@
 // - Ab `lagerAb` (Ladenpreis) geht ein Buch ins Lager und wird mit den Lager-Regeln gerechnet.
 // - Raster, Grabbelkiste, Grenzen und alle Sätze sind in den Einstellungen änderbar.
 
-import { Angebot } from './markt';
+import type { Angebot } from './markt';
+import { ausreisserUnten, istGrosshaendler } from './pruefung';
 
 export type Zustand = 'wie_neu' | 'sehr_gut' | 'gut' | 'akzeptabel' | 'maengel';
 export type Merkmal = 'erstausgabe' | 'signiert' | 'schutzumschlag' | 'selten';
@@ -95,6 +96,8 @@ export interface PreisRegeln {
   knappheit: Knappheit;
   /** Merkmale, die immer einen Hinweis „im Lager begutachten“ auslösen */
   pruefMerkmale: Merkmal[];
+  /** Schutz gegen Ausreißer und Großhändler beim Vergleich */
+  robust: RobusteRegeln;
 }
 
 export const STANDARD_REGELN: PreisRegeln = {
@@ -143,6 +146,7 @@ export const STANDARD_REGELN: PreisRegeln = {
     neuBisJahre: 3,
   },
   pruefMerkmale: ['signiert', 'erstausgabe'],
+  robust: { ausreisserUebergehen: true, grosshaendlerUebergehen: true, mittelAusZweiAb: 4 },
 };
 
 export interface PreisEingabe {
@@ -190,6 +194,12 @@ export interface PreisErgebnis {
   quelle: 'vergleich' | 'schaetzung';
   /** benutztes Vergleichsangebot */
   anker: Angebot | null;
+  /** alle Angebote, aus denen der Vergleichswert stammt (bei „Mittel der 2 günstigsten“ zwei) */
+  ankerAngebote: Angebot[];
+  /** Ein Filter (Ausgabe/Zustand) musste gelockert werden */
+  gelockert: boolean;
+  /** Bewusst übergangene Angebote (Ausreißer, Großhändler) */
+  uebergangen: { angebot: Angebot; grund: string }[];
   /** gerechneter Vergleichspreis (Anker inkl. Versand) */
   vergleichspreis: number | null;
   /** gewählte Merkmale */
@@ -250,23 +260,51 @@ export interface AnkerWahl {
   gleicherZustand: boolean;
   /** Warum ein Filter nicht greifen konnte */
   hinweise: string[];
+  /** Vergleichswert in Euro – meist der Gesamtpreis des Ankers, bei „Mittel der zwei günstigsten“ deren Mittel */
+  wert: number | null;
+  /** Alle Angebote, aus denen der Wert stammt (1 oder 2) */
+  angebote: Angebot[];
+  /** Ein Filter (Ausgabe/Zustand) musste gelockert werden → Vergleich unsicherer */
+  gelockert: boolean;
+  /** Bewusst übergangene Angebote (Ausreißer, Großhändler) mit Grund */
+  uebergangen: { angebot: Angebot; grund: string }[];
 }
+
+/** Schutz gegen einzelne irreführende Angebote ganz unten */
+export interface RobusteRegeln {
+  /** Angebote weit unter dem Rest des Marktes nicht als Vergleich nehmen */
+  ausreisserUebergehen: boolean;
+  /** Großhändler-Kampfpreise (momox, rebuy …) nicht als Vergleich nehmen, solange es andere gibt */
+  grosshaendlerUebergehen: boolean;
+  /** Ab so vielen vergleichbaren Angeboten: Mittel der zwei günstigsten statt nur des günstigsten (0 = aus) */
+  mittelAusZweiAb: number;
+}
+
+export const STANDARD_ROBUST: RobusteRegeln = STANDARD_REGELN.robust;
+
+const KEIN_ROBUST: RobusteRegeln = { ausreisserUebergehen: false, grosshaendlerUebergehen: false, mittelAusZweiAb: 0 };
+
+const kurz = (a: Angebot) => `${a.haendler || a.plattform} ${euro(a.gesamt)}`;
 
 /**
  * Wählt das Vergleichsangebot nach den Regeln des Zweigs.
  * Filter (Ausgabe, Zustand) greifen nur, wenn danach noch genug Angebote übrig sind –
- * sonst wird gelockert und das in `hinweise` begründet.
+ * sonst wird gelockert und das in `hinweise` begründet. Danach werden Ausreißer nach unten und
+ * Großhändler-Kampfpreise übergangen (ebenfalls nur, wenn genug übrig bleibt).
  */
 export function waehleAnker(
   angebote: Angebot[],
   r: ZweigRegeln,
-  opts: { zustand: Zustand; jahr?: string | null },
+  opts: { zustand: Zustand; jahr?: string | null; robust?: RobusteRegeln },
 ): AnkerWahl {
+  const robust = opts.robust ?? KEIN_ROBUST;
   const sortiert = [...angebote].sort((a, b) => a.gesamt - b.gesamt);
   const noetig = r.anker === 'zweitguenstigstes' ? 2 : 1;
   let pool = sortiert;
   const einschraenkungen: string[] = [];
   const hinweise: string[] = [];
+  const uebergangen: AnkerWahl['uebergangen'] = [];
+  let gelockert = false;
 
   if (r.nurGleicheAusgabe && opts.jahr) {
     const g = pool.filter((a) => a.jahr === opts.jahr);
@@ -275,6 +313,7 @@ export function waehleAnker(
       einschraenkungen.push(`gleiche Ausgabe ${opts.jahr}`);
     } else if (g.length !== pool.length) {
       hinweise.push(`Zu wenige Angebote mit Ausgabe ${opts.jahr} → alle Ausgaben verglichen`);
+      gelockert = true;
     }
   }
 
@@ -287,6 +326,30 @@ export function waehleAnker(
       einschraenkungen.push(`Zustand ${ZUSTAND_LABEL[opts.zustand]}`);
     } else {
       hinweise.push(`Zu wenige Angebote im Zustand ${ZUSTAND_LABEL[opts.zustand]} → alle Zustände verglichen`);
+      gelockert = true;
+    }
+  }
+
+  // Ausreißer nach unten: z. B. ein falsch eingestelltes Angebot für 1 € zwischen lauter 20-€-Angeboten
+  if (robust.ausreisserUebergehen) {
+    const raus = ausreisserUnten(pool.map((a) => a.gesamt));
+    if (raus.size > 0 && pool.length - raus.size >= noetig) {
+      for (const i of raus) {
+        uebergangen.push({ angebot: pool[i], grund: 'Ausreißer weit unter dem Markt' });
+        hinweise.push(`Ausreißer übergangen: ${kurz(pool[i])} (weit unter dem Rest)`);
+      }
+      pool = pool.filter((_, i) => !raus.has(i));
+    }
+  }
+  // Großhändler unterbieten jeden – ihr Preis ist eher die Untergrenze des Marktes als ein Vergleich
+  if (robust.grosshaendlerUebergehen) {
+    const gross = pool.filter(istGrosshaendler);
+    if (gross.length > 0 && pool.length - gross.length >= noetig) {
+      for (const a of gross) {
+        uebergangen.push({ angebot: a, grund: 'Großhändler-Preis' });
+        hinweise.push(`Großhändler übergangen: ${kurz(a)}`);
+      }
+      pool = pool.filter((a) => !istGrosshaendler(a));
     }
   }
 
@@ -295,15 +358,24 @@ export function waehleAnker(
   if (anker && r.anker === 'zweitguenstigstes' && pool.length === 1) {
     hinweise.push('Nur ein vergleichbares Angebot → das günstigste genommen');
   }
+  // Ein einzelnes Angebot ganz unten ist Zufall; das Mittel der zwei günstigsten ist stabiler
+  const mittel = r.anker === 'guenstigstes' && robust.mittelAusZweiAb > 0 && pool.length >= robust.mittelAusZweiAb;
+  const ankerAngebote = !anker ? [] : mittel ? pool.slice(0, 2) : [anker];
+  const wert = !anker ? null : mittel ? Math.round(((pool[0].gesamt + pool[1].gesamt) / 2) * 100) / 100 : anker.gesamt;
+  const zusatz = einschraenkungen.length ? ` (${einschraenkungen.join(', ')})` : '';
 
   return {
     anker,
     zweitguenstigstes,
     gleicherZustand,
-    bezeichnung:
-      `${zweitguenstigstes ? 'zweitgünstigstes' : 'günstigstes'} Angebot` +
-      (einschraenkungen.length ? ` (${einschraenkungen.join(', ')})` : ''),
+    bezeichnung: mittel
+      ? `Mittel der 2 günstigsten Angebote${zusatz}`
+      : `${zweitguenstigstes ? 'zweitgünstigstes' : 'günstigstes'} Angebot${zusatz}`,
     hinweise,
+    wert,
+    angebote: ankerAngebote,
+    gelockert,
+    uebergangen,
   };
 }
 
@@ -322,6 +394,9 @@ interface Basis {
   notizen: string[];
   /** Hinweis bei unsicherem Vergleich */
   pruefen?: string;
+  ankerAngebote: Angebot[];
+  gelockert: boolean;
+  uebergangen: AnkerWahl['uebergangen'];
 }
 
 function basisRechnen(e: PreisEingabe, merkmale: Merkmal[], zr: ZweigRegeln, r: PreisRegeln): Basis | null {
@@ -402,22 +477,28 @@ function basisRechnen(e: PreisEingabe, merkmale: Merkmal[], zr: ZweigRegeln, r: 
       ...x,
       quelle: 'vergleich',
       anker: e.angebote?.find((a) => Math.abs(a.gesamt - e.vergleichspreis!) < 0.005) ?? null,
+      ankerAngebote: e.angebote?.filter((a) => Math.abs(a.gesamt - e.vergleichspreis!) < 0.005).slice(0, 1) ?? [],
       vergleichspreis: e.vergleichspreis,
       notizen: [],
+      gelockert: false,
+      uebergangen: [],
     };
   }
 
   // 2. Anker nach Regel aus den Angeboten wählen
   if (e.angebote?.length) {
-    const wahl = waehleAnker(e.angebote, zr, { zustand: e.zustand, jahr: e.jahr });
-    if (!wahl.anker) return null;
-    const x = mitAnker(wahl.anker.gesamt, wahl.bezeichnung, wahl.gleicherZustand);
+    const wahl = waehleAnker(e.angebote, zr, { zustand: e.zustand, jahr: e.jahr, robust: r.robust });
+    if (!wahl.anker || wahl.wert == null) return null;
+    const x = mitAnker(wahl.wert, wahl.bezeichnung, wahl.gleicherZustand);
     return {
       ...x,
       quelle: 'vergleich',
       anker: wahl.anker,
-      vergleichspreis: wahl.anker.gesamt,
+      ankerAngebote: wahl.angebote,
+      vergleichspreis: wahl.wert,
       notizen: wahl.hinweise,
+      gelockert: wahl.gelockert,
+      uebergangen: wahl.uebergangen,
     };
   }
 
@@ -430,6 +511,9 @@ function basisRechnen(e: PreisEingabe, merkmale: Merkmal[], zr: ZweigRegeln, r: 
       neupreisBasis: false,
       quelle: 'schaetzung',
       anker: null,
+      ankerAngebote: [],
+      gelockert: false,
+      uebergangen: [],
       vergleichspreis: null,
       schritte: [
         { art: 'anker', label: 'eigene Schätzung (kein Online-Vergleich)', wert: euro(e.schaetzpreis) },
@@ -525,6 +609,9 @@ export function berechnePreis(e: PreisEingabe, r: PreisRegeln = STANDARD_REGELN)
     euroZuschlag: basis.euroZuschlag,
     quelle: basis.quelle,
     anker: basis.anker,
+    ankerAngebote: basis.ankerAngebote,
+    gelockert: basis.gelockert,
+    uebergangen: basis.uebergangen,
     vergleichspreis: basis.vergleichspreis,
     merkmale: merkmalListe,
     schritte,

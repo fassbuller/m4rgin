@@ -1,11 +1,15 @@
 // Das Auspreisen eines Buches: Markt (nachvollziehbar), Trend, Zustand, Merkmale → Vorschlag → Stapel.
 import React, { useMemo, useState } from 'react';
-import { Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Linking, Modal, Pressable, ScrollView, Share, StyleSheet, View } from 'react-native';
 import { Text } from './Schrift';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Titel, titelZeile2 } from '../lib/titel';
-import { Angebot, ankerAngebot, MarktErgebnis, QUELLEN_NAME } from '../lib/markt';
+import { Angebot, MarktErgebnis, marktMitAuswahl, QUELLEN_NAME } from '../lib/markt';
+import { angebotSchluessel } from '../lib/pruefung';
+import { AMPEL_LABEL, bewerteKonfidenz, Konfidenz } from '../lib/konfidenz';
+import { testfallAus } from '../lib/testfall';
+import { ignorierteHaendlerLaden, ignorierteHaendlerSpeichern } from '../db';
 import { Signal } from '../lib/trend';
 import {
   berechnePreis, euro, Merkmal, MERKMAL_LABEL, PreisErgebnis, PreisRegeln, Zustand, ZUSTAND_LABEL,
@@ -28,6 +32,12 @@ export interface AuspreisDaten {
   anker: Angebot | null;
   /** Neupreis, mit dem gerechnet wurde (ggf. von Hand korrigiert) */
   neupreis: number | null;
+  /** Markt nach „passt nicht“/„zurückholen“ – das, womit gerechnet wurde */
+  markt: MarktErgebnis | null;
+  konfidenz: Konfidenz;
+  vergleichVonHand: boolean;
+  /** Zahl der von Hand aussortierten Angebote */
+  aussortiertVonHand: number;
 }
 
 interface Props {
@@ -50,43 +60,93 @@ export function PreisSheet(p: Props) {
   const rand = useSafeAreaInsets();
   const [zustand, setZustand] = useState<Zustand>('gut');
   const [merkmale, setMerkmale] = useState<Merkmal[]>([]);
-  const [ankerIndex, setAnkerIndex] = useState<number | null>(null);
+  const [ankerSchluessel, setAnkerSchluessel] = useState<string | null>(null);
   const [schaetz, setSchaetz] = useState('');
   const [neupreisText, setNeupreisText] = useState(t.neupreis != null ? zahlText(t.neupreis) : '');
   const neupreis = parseZahl(neupreisText);
   const [korrektur, setKorrektur] = useState(0); // ±0,50-Schritte auf den Vorschlag
   const [alleZeigen, setAlleZeigen] = useState(false);
+  // „Passt nicht“: von Hand aussortierte und von Hand zurückgeholte Angebote (Schlüssel)
+  const [raus, setRaus] = useState<string[]>([]);
+  const [rein, setRein] = useState<string[]>([]);
+  const [aussortiertOffen, setAussortiertOffen] = useState(false);
 
-  const angebote = p.markt?.angebote ?? [];
-  const standardAnker = ankerAngebot(angebote);
+  const markt = useMemo(() => (p.markt ? marktMitAuswahl(p.markt, raus, rein) : null), [p.markt, raus, rein]);
+  const angebote = markt?.angebote ?? [];
+  const aussortiert = markt?.aussortiert ?? [];
+  const gewaehltesAngebot = ankerSchluessel != null ? angebote.find((a) => angebotSchluessel(a) === ankerSchluessel) ?? null : null;
 
-  // Der Anker kommt aus den Regeln (Laden: günstigstes, Lager: zweitgünstigstes).
+  // Der Anker kommt aus den Regeln (Laden: günstigstes bzw. Mittel der zwei günstigsten, Lager: zweitgünstigstes).
   // Tippt jemand ein Angebot an, gilt das als gewähltes Vergleichsangebot.
   const ergebnis = useMemo(
     () =>
       berechnePreis(
         {
           angebote,
-          vergleichspreis: ankerIndex != null ? angebote[ankerIndex]?.gesamt ?? null : null,
-          anzahlAngebote: p.markt?.lage.anzahl ?? null,
+          vergleichspreis: gewaehltesAngebot?.gesamt ?? null,
+          anzahlAngebote: markt?.lage.anzahl ?? null,
           schaetzpreis: parseZahl(schaetz),
           zustand,
           merkmale,
           neupreis,
           jahr: t.jahr,
-          marktUnvollstaendig: marktUnvollstaendig(p.markt),
+          marktUnvollstaendig: marktUnvollstaendig(markt),
         },
         p.regeln,
       ),
-    [angebote, ankerIndex, p.markt, schaetz, zustand, merkmale, neupreis, t.jahr, p.regeln],
+    [angebote, gewaehltesAngebot, markt, schaetz, zustand, merkmale, neupreis, t.jahr, p.regeln],
   );
   const anker = ergebnis?.anker ?? null;
   const endpreis = ergebnis ? Math.max(0.5, ergebnis.vorschlag + korrektur * p.regeln.raster) : null;
+  const konfidenz = useMemo(
+    () => bewerteKonfidenz({ markt, preis: ergebnis, vonHandGewaehlt: gewaehltesAngebot != null }),
+    [markt, ergebnis, gewaehltesAngebot],
+  );
   const bewegung = useBewegung(p.seltenheitRegeln.effekte);
   const seltenheit = useMemo(
-    () => seltenheitFuer(t, p.markt, ergebnis, merkmale, p.trends, p.seltenheitRegeln, endpreis),
-    [t, p.markt, ergebnis, merkmale, p.trends, p.seltenheitRegeln, endpreis],
+    () => seltenheitFuer(t, markt, ergebnis, merkmale, p.trends, p.seltenheitRegeln, endpreis, konfidenz),
+    [t, markt, ergebnis, merkmale, p.trends, p.seltenheitRegeln, endpreis, konfidenz],
   );
+  const uebergangen = new Map((ergebnis?.uebergangen ?? []).map((u) => [u.angebot, u.grund]));
+
+  /** „Passt nicht“: nur hier aussortieren oder den Händler künftig immer ignorieren. */
+  const passtNicht = (a: Angebot) => {
+    const k = angebotSchluessel(a);
+    const nurHier = () => {
+      setRaus((x) => [...x, k]);
+      if (ankerSchluessel === k) setAnkerSchluessel(null);
+    };
+    const knoepfe: { text: string; style?: 'cancel' | 'destructive'; onPress?: () => void }[] = [
+      { text: 'Nur hier aussortieren', onPress: nurHier },
+    ];
+    if (a.haendler && a.haendler !== 'privat') {
+      knoepfe.push({
+        text: `„${a.haendler}“ immer ignorieren`,
+        style: 'destructive',
+        onPress: async () => {
+          const alt = await ignorierteHaendlerLaden().catch(() => []);
+          await ignorierteHaendlerSpeichern([...alt, a.haendler!]).catch(() => undefined);
+          const h = a.haendler!.toLowerCase();
+          setRaus((x) => [...x, ...angebote.filter((b) => b.haendler?.toLowerCase() === h).map(angebotSchluessel)]);
+          if (ankerSchluessel && angebote.some((b) => b.haendler?.toLowerCase() === h && angebotSchluessel(b) === ankerSchluessel)) {
+            setAnkerSchluessel(null);
+          }
+        },
+      });
+    }
+    knoepfe.push({ text: 'Abbrechen', style: 'cancel' });
+    Alert.alert('Angebot passt nicht?', `${a.plattform}${a.haendler ? ` · ${a.haendler}` : ''} · ${euro(a.gesamt)}\nEs zählt dann nicht mehr für Preis und Seltenheit.`, knoepfe);
+  };
+  const zurueckholen = (a: Angebot) => {
+    const k = angebotSchluessel(a);
+    if (raus.includes(k)) setRaus((x) => x.filter((y) => y !== k));
+    else setRein((x) => [...x, k]);
+  };
+  const testfallTeilen = () => {
+    if (!markt || endpreis == null) return;
+    const tf = testfallAus(t, zustand, [...markt.angebote, ...(markt.aussortiert ?? []).map(({ grund: _g, ...a }) => a)], endpreis);
+    Share.share({ message: JSON.stringify(tf, null, 1), title: `Testfall ${tf.name}` }).catch(() => undefined);
+  };
   const glitzer = !!seltenheit && seltenheit.effekt === 'voll' && bewegung && (seltenheit.stufe === 'selten' || seltenheit.stufe === 'raritaet');
 
   const umschalten = (m: Merkmal) =>
@@ -140,27 +200,33 @@ export function PreisSheet(p: Props) {
         <Abschnitt titel="Markt" icon="store-search" farbe={F.blau} />
         <View style={st.statusReihe}>
           {p.marktLaedt && <Text style={st.klein}>Frage Preisquellen ab …</Text>}
-          {p.markt?.status.map((s) => (
+          {markt?.status.map((s) => (
             <View key={s.quelle} style={st.statusTeil}>
               <Icon name={s.ok ? 'check-circle' : 'close-circle'} size={16} farbe={s.ok ? F.gruen : F.rot} />
               <Text style={[st.status, { color: s.ok ? F.gruen : F.rot }]}>
                 {QUELLEN_NAME[s.quelle]} {s.ok ? s.anzahl : s.fehler}
+                {s.versuche === 2 ? ' (2. Versuch)' : ''}
               </Text>
             </View>
           ))}
-          {p.markt && p.markt.status.length === 0 && (
+          {markt && markt.status.length === 0 && (
             <Text style={st.klein}>Keine Preisquelle eingerichtet (Einstellungen).</Text>
           )}
         </View>
-        {p.markt && p.markt.lage.anzahl > 0 && (
+        {markt && markt.lage.anzahl > 0 && (
           <Text style={st.lage}>
-            {p.markt.lage.anzahl} Angebote · ab {euro(p.markt.lage.min!)} · Median {euro(p.markt.lage.median!)}
+            {markt.lage.anzahl} Angebote · ab {euro(markt.lage.min!)} · Median {euro(markt.lage.median!)}
           </Text>
         )}
-        {sichtbar.map((a, i) => {
-          const gewaehlt = anker === a;
+        {markt?.ueberIsbn === false && markt.lage.anzahl > 0 && (
+          <Text style={st.mini}>Per Titel gesucht – Angebote mit anderem Titel/Autor sind aussortiert.</Text>
+        )}
+        {sichtbar.map((a) => {
+          const k = angebotSchluessel(a);
+          const gewaehlt = ergebnis?.ankerAngebote.includes(a) ?? false;
+          const grund = uebergangen.get(a);
           return (
-            <Pressable key={i} onPress={() => setAnkerIndex(i)} style={[st.angebot, gewaehlt && st.angebotGewaehlt]}>
+            <Pressable key={k} onPress={() => setAnkerSchluessel(k)} style={[st.angebot, gewaehlt && st.angebotGewaehlt]}>
               <Icon name={gewaehlt ? 'radiobox-marked' : 'radiobox-blank'} size={22} farbe={gewaehlt ? F.gruen : F.linie} />
               <View style={{ flex: 1 }}>
                 <Text style={st.angebotKopf}>
@@ -170,9 +236,16 @@ export function PreisSheet(p: Props) {
                 </Text>
                 {gewaehlt && (
                   <Text style={st.vergleich}>
-                    {ergebnis?.zweig === 'lager' ? 'Anker der Lager-Regeln (zweitgünstigstes)' : 'Vergleich für den Preis'}
+                    {gewaehltesAngebot
+                      ? 'Von Hand gewählter Vergleich'
+                      : ergebnis?.zweig === 'lager'
+                        ? 'Anker der Lager-Regeln (zweitgünstigstes)'
+                        : (ergebnis?.ankerAngebote.length ?? 0) > 1
+                          ? 'Vergleich (Mittel der 2 günstigsten)'
+                          : 'Vergleich für den Preis'}
                   </Text>
                 )}
+                {grund && <Text style={st.uebergangen}>übergangen: {grund}</Text>}
                 {a.zustandText ? <Text style={st.klein} numberOfLines={2}>{a.zustandText}</Text> : null}
               </View>
               <View style={{ alignItems: 'flex-end' }}>
@@ -186,6 +259,9 @@ export function PreisSheet(p: Props) {
                   </Text>
                 ) : null}
               </View>
+              <Pressable onPress={() => passtNicht(a)} hitSlop={10} style={st.passtNicht} accessibilityLabel="Angebot passt nicht">
+                <Icon name="close" size={18} farbe={F.grau} />
+              </Pressable>
             </Pressable>
           );
         })}
@@ -195,8 +271,34 @@ export function PreisSheet(p: Props) {
           </Text>
         )}
         {angebote.some((a) => a.versandGeschaetzt) && <Text style={st.mini}>* Versand geschätzt (Quelle nennt keinen)</Text>}
-        {standardAnker.ausreisser && ankerIndex == null && (
-          <Hinweis text="Das günstigste Angebot liegt weit unter dem Median – Ausreißer? Antippen, um ein anderes als Vergleich zu wählen." />
+        {angebote.length > 0 && <Text style={st.mini}>Antippen = als Vergleich wählen · ✕ = passt nicht</Text>}
+        {(markt?.hinweise ?? []).map((h, i) => <Text key={i} style={st.mini}>{h}</Text>)}
+
+        {/* Aussortiert: mit Grund, zurückholbar */}
+        {aussortiert.length > 0 && (
+          <View style={{ marginTop: 10 }}>
+            <Text style={st.link} onPress={() => setAussortiertOffen(!aussortiertOffen)}>
+              {aussortiertOffen ? '▾' : '▸'} {aussortiert.length} aussortiert
+            </Text>
+            {aussortiertOffen &&
+              aussortiert.map((a) => (
+                <View key={angebotSchluessel(a)} style={[st.angebot, st.angebotAus]}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={st.angebotKopf}>
+                      <Text style={st.plattform}>{a.plattform}</Text>
+                      {a.haendler ? `  ${a.haendler}` : ''}
+                      {a.jahr ? `  · ${a.jahr}` : ''}
+                    </Text>
+                    <Text style={st.uebergangen}>{a.grund}</Text>
+                    {a.titel ? <Text style={st.klein} numberOfLines={1}>{a.titel}</Text> : null}
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={[st.angebotPreis, { color: F.grau }]}>{euro(a.gesamt)}</Text>
+                    <Text style={st.link} onPress={() => zurueckholen(a)}>zurückholen</Text>
+                  </View>
+                </View>
+              ))}
+          </View>
         )}
 
         {!p.marktLaedt && angebote.length === 0 && (
@@ -262,12 +364,18 @@ export function PreisSheet(p: Props) {
               <Text style={st.preisGross}>{euro(endpreis)}</Text>
               <Schritt gross plus onPress={() => setKorrektur((k) => k + 1)} />
             </View>
+            <AmpelZeile k={konfidenz} />
             <Rechnung schritte={ergebnis.schritte} notizen={ergebnis.notizen} farbe={KATEGORIE_FARBE[ergebnis.kategorie]} />
             {korrektur !== 0 && <Text style={st.erklaerung}>Von Hand {korrektur > 0 ? '+' : ''}{euro(korrektur * p.regeln.raster)}</Text>}
             {ergebnis.hinweise.map((h, i) => <Hinweis key={i} text={h} />)}
           </View>
         ) : (
           !p.marktLaedt && <Text style={[st.klein, { marginTop: 16 }]}>Für einen Vorschlag fehlt noch ein Vergleichs- oder Schätzpreis.</Text>
+        )}
+        {ergebnis && markt && markt.angebote.length + aussortiert.length > 0 && (
+          <Text style={[st.link, { marginTop: 18, alignSelf: 'center' }]} onPress={testfallTeilen}>
+            Als Testfall teilen
+          </Text>
         )}
       </ScrollView>
 
@@ -280,11 +388,43 @@ export function PreisSheet(p: Props) {
           deaktiviert={!ergebnis}
           stil={{ flex: 2 }}
           onPress={() =>
-            ergebnis && endpreis != null && p.onSpeichern({ ergebnis, endpreis, zustand, merkmale: ergebnis.merkmale, anker, neupreis })
+            ergebnis &&
+            endpreis != null &&
+            p.onSpeichern({
+              ergebnis, endpreis, zustand, merkmale: ergebnis.merkmale, anker, neupreis, markt, konfidenz,
+              vergleichVonHand: gewaehltesAngebot != null,
+              aussortiertVonHand: raus.length,
+            })
           }
         />
       </View>
     </Modal>
+  );
+}
+
+const AMPEL_FARBE = { gruen: F.gruen, gelb: F.gelb, rot: F.rot } as const;
+
+/** Konfidenz-Ampel: eine Zeile, antippen zeigt die Gründe. */
+export function AmpelZeile({ k }: { k: Konfidenz }) {
+  const farbe = AMPEL_FARBE[k.ampel];
+  const text = k.gruende[0] ?? k.plus[0] ?? '';
+  return (
+    <Pressable
+      onPress={() =>
+        Alert.alert(
+          `Preis: ${AMPEL_LABEL[k.ampel]}`,
+          [...k.gruende.map((g) => `− ${g}`), ...k.plus.map((g) => `+ ${g}`)].join('\n') || 'Nichts auszusetzen.',
+        )
+      }
+      style={[st.ampel, { borderColor: farbe, backgroundColor: hell(farbe, 0.12) }]}
+    >
+      <View style={[st.ampelPunkt, { backgroundColor: farbe }]} />
+      <Text style={st.ampelText} numberOfLines={1}>
+        <Text style={{ fontWeight: '800' }}>{AMPEL_LABEL[k.ampel]}</Text>
+        {text ? ` · ${text}` : ''}
+      </Text>
+      <Icon name="information" size={16} farbe={F.grau} />
+    </Pressable>
   );
 }
 
@@ -324,6 +464,12 @@ const st = StyleSheet.create({
   angebot: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: F.karte, padding: 12, marginTop: 8, borderWidth: 2, borderColor: 'transparent' },
   angebotGewaehlt: { borderColor: F.gruen, backgroundColor: hell(F.gruen, 0.06) },
   vergleich: { fontSize: 12, fontWeight: '800', color: F.gruen, marginTop: 2 },
+  uebergangen: { fontSize: 12, fontWeight: '700', color: F.orange, marginTop: 2 },
+  angebotAus: { opacity: 0.75, borderStyle: 'dashed', borderColor: F.linie },
+  passtNicht: { paddingLeft: 4, alignSelf: 'flex-start' },
+  ampel: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 2, paddingHorizontal: 10, paddingVertical: 6, marginBottom: 10 },
+  ampelPunkt: { width: 12, height: 12, borderRadius: 6 },
+  ampelText: { flex: 1, fontSize: 13, color: F.tinte },
   angebotKopf: { fontSize: 14, color: F.tinte },
   plattform: { fontWeight: '800' },
   angebotPreis: { fontSize: 17, fontWeight: '800', color: F.tinte },

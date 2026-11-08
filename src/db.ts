@@ -9,6 +9,7 @@ import { Kategorie, Merkmal, Zustand } from './lib/preis';
 import { zuCsv } from './lib/csv';
 import { Angebot, MarktErgebnis } from './lib/markt';
 import { Snapshot } from './lib/trend';
+import { Korrektur } from './lib/korrektur';
 import { Einstellungen, mitStandards } from './einstellungen';
 import { geheimnisseSpeichern, mitGeheimnissen, ohneGeheimnisse } from './geheim';
 
@@ -110,6 +111,20 @@ async function init() {
       median REAL
     );
     CREATE INDEX IF NOT EXISTS markt_verlauf_schluessel ON markt_verlauf (schluessel, zeit);
+    -- Abweichungen vom Vorschlag (Preis von Hand, anderer Vergleich, aussortierte Angebote)
+    CREATE TABLE IF NOT EXISTS korrektur (
+      zeit TEXT NOT NULL,
+      log_id INTEGER,
+      isbn TEXT, titel TEXT,
+      vorschlag REAL NOT NULL,
+      endpreis REAL NOT NULL,
+      zweig TEXT, kategorie TEXT, zustand TEXT,
+      anzahl INTEGER,
+      ampel TEXT,
+      vergleich_von_hand INTEGER NOT NULL DEFAULT 0,
+      aussortiert_von_hand INTEGER NOT NULL DEFAULT 0,
+      art TEXT NOT NULL
+    );
   `);
   await migriereStapel(d);
   return d;
@@ -418,6 +433,15 @@ export async function stapelAbschliessen(id: number) {
 export async function endpreisAendern(id: number, endpreis: number) {
   const d = await db();
   await d.runAsync('UPDATE log SET endpreis=? WHERE id=?', endpreis, id);
+  // Auch spätere Änderungen im Stapel gehören ins Korrektur-Protokoll
+  const e = await d.getFirstAsync<LogEintrag>('SELECT * FROM log WHERE id = ?', id);
+  if (e?.vorschlag != null && Math.abs(e.vorschlag - endpreis) >= 0.005) {
+    await korrekturSpeichern({
+      log_id: id, isbn: e.isbn, titel: e.titel, vorschlag: e.vorschlag, endpreis,
+      zweig: e.kategorie === 'lager' ? 'lager' : 'laden', kategorie: e.kategorie, zustand: e.zustand,
+      anzahl: e.markt_anzahl, ampel: null, vergleich_von_hand: 0, aussortiert_von_hand: 0, art: 'nachtraeglich',
+    }).catch(() => undefined);
+  }
 }
 
 export interface EintragAenderung {
@@ -560,4 +584,56 @@ export async function merkerLaden(k: string): Promise<string | null> {
 export async function merkerSpeichern(k: string, v: string) {
   const d = await db();
   await d.runAsync('INSERT INTO kv (k, v) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET v=excluded.v', `merker.${k}`, v);
+}
+
+// ---------- Ignorierte Händler („passt nie“) ----------
+
+export async function ignorierteHaendlerLaden(): Promise<string[]> {
+  try {
+    const x = JSON.parse((await merkerLaden('ignorierteHaendler')) ?? '[]');
+    return Array.isArray(x) ? x.filter((h): h is string => typeof h === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function ignorierteHaendlerSpeichern(liste: string[]) {
+  const sauber = [...new Set(liste.map((h) => h.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'de'));
+  await merkerSpeichern('ignorierteHaendler', JSON.stringify(sauber));
+}
+
+// ---------- Korrektur-Protokoll ----------
+// Jede Abweichung vom Vorschlag (Preis von Hand, anderes Vergleichsangebot, Angebot aussortiert)
+// wird mit Zusammenhang gespeichert. Nach ein paar Wochen sieht man, welche Regel systematisch danebenliegt.
+
+export async function korrekturSpeichern(k: Omit<Korrektur, 'zeit'>) {
+  const d = await db();
+  await d.runAsync(
+    `INSERT INTO korrektur (zeit, log_id, isbn, titel, vorschlag, endpreis, zweig, kategorie, zustand, anzahl, ampel,
+       vergleich_von_hand, aussortiert_von_hand, art) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    new Date().toISOString(),
+    k.log_id,
+    k.isbn,
+    k.titel,
+    k.vorschlag,
+    k.endpreis,
+    k.zweig,
+    k.kategorie,
+    k.zustand,
+    k.anzahl,
+    k.ampel,
+    k.vergleich_von_hand,
+    k.aussortiert_von_hand,
+    k.art,
+  );
+}
+
+export async function korrekturenLaden(limit = 2000): Promise<Korrektur[]> {
+  const d = await db();
+  return d.getAllAsync<Korrektur>('SELECT * FROM korrektur ORDER BY zeit DESC LIMIT ?', limit);
+}
+
+export async function korrekturenLoeschen() {
+  const d = await db();
+  await d.runAsync('DELETE FROM korrektur');
 }

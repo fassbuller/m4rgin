@@ -12,7 +12,9 @@ import { angebotsSignal, interesseSignal, neuauflageSignal, Signal } from './lib
 import { berechnePreis, Merkmal, PreisErgebnis, PreisRegeln } from './lib/preis';
 import { bewerteSeltenheit, Seltenheit, SeltenheitsRegeln } from './lib/seltenheit';
 import { Einstellungen } from './einstellungen';
-import { LogEintrag, verlaufLaden, verlaufSpeichern } from './db';
+import { ignorierteHaendlerLaden, LogEintrag, verlaufLaden, verlaufSpeichern } from './db';
+import { bindungAus } from './lib/ausgaben';
+import { bewerteKonfidenz, Konfidenz } from './lib/konfidenz';
 
 const nachname = (t: Titel) => t.autoren[0]?.split(',')[0]?.trim();
 
@@ -50,7 +52,10 @@ export async function marktFuer(t: Titel, e: Einstellungen): Promise<MarktErgebn
     ebayQuelle(e.ebay, e.versandPauschale),
   ];
   const anfrage = t.isbn ? { isbn: t.isbn } : { titel: t.titel, autor: nachname(t) };
-  const m = await marktAbfragen(quellen, anfrage);
+  const ignorierteHaendler = await ignorierteHaendlerLaden().catch(() => []);
+  const m = await marktAbfragen(quellen, anfrage, {
+    pruef: { titel: t.titel, autor: t.autoren[0], bindung: bindungAus(t.einband), ignorierteHaendler },
+  });
   if (m.status.some((s) => s.ok)) await verlaufSpeichern(schluessel(t), m).catch(() => undefined);
   return m;
 }
@@ -129,8 +134,10 @@ export function seltenheitFuer(
   trends: Signal[] | null,
   r: SeltenheitsRegeln,
   endpreis?: number | null,
+  konfidenz?: Konfidenz | null,
 ): Seltenheit | null {
   if (!m) return null;
+  const k = konfidenz ?? bewerteKonfidenz({ markt: m, preis });
   return bewerteSeltenheit(
     {
       anzahl: m.lage.anzahl,
@@ -143,6 +150,7 @@ export function seltenheitFuer(
       marktUnvollstaendig: marktUnvollstaendig(m),
       ueberIsbn: !!t.isbn,
       interesseHoch: !!trends?.some((s) => s.text.startsWith('Interesse') && s.richtung === 'hoch'),
+      konfidenz: k.ampel,
     },
     r,
   );

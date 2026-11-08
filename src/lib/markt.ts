@@ -1,6 +1,9 @@
 // Gemeinsames Modell für Marktangebote aus allen Preisquellen + Zusammenfassung.
 // Grundsatz „nachvollziehbar“: Jede Zahl, die die App zeigt, lässt sich auf konkrete Angebote zurückführen.
 
+import { angebotSchluessel, AussortiertesAngebot, pruefeAngebote, PruefKontext } from './pruefung';
+import { isbn13zu10 } from './isbn';
+
 export type QuellenId = 'booklooker' | 'eurobuch' | 'ebay';
 
 export const QUELLEN_NAME: Record<QuellenId, string> = { booklooker: 'booklooker', eurobuch: 'eurobuch', ebay: 'eBay' };
@@ -21,6 +24,8 @@ export interface Angebot {
   land?: string;
   url?: string;
   titel?: string; // wie beim Anbieter angegeben (zur Kontrolle, ob es dasselbe Buch ist)
+  /** Autor laut Anbieter, getrennt vom Titel – für den Titelabgleich */
+  autor?: string;
   /** Neubuch eines Händlers (Amazon, Thalia …) → Buch ist noch lieferbar */
   neu?: boolean;
 }
@@ -31,6 +36,8 @@ export interface QuellenStatus {
   anzahl: number;
   fehler?: string;
   ms: number;
+  /** 2 = erst der zweite Versuch hat geklappt (oder ist auch gescheitert) */
+  versuche?: number;
 }
 
 export interface Marktlage {
@@ -41,7 +48,14 @@ export interface Marktlage {
 }
 
 export interface MarktErgebnis {
-  angebote: Angebot[]; // sortiert nach Gesamtpreis
+  /** Geprüfte Angebote, sortiert nach Gesamtpreis – nur diese zählen für Preis und Seltenheit */
+  angebote: Angebot[];
+  /** Aussortierte Angebote mit Grund (Mängelexemplar, anderes Buch …) – sichtbar, von Hand zurückholbar */
+  aussortiert?: AussortiertesAngebot[];
+  /** Hinweise der Prüfung, z. B. „Titelabgleich hätte alles aussortiert → nicht angewendet“ */
+  hinweise?: string[];
+  /** Per ISBN gesucht (zuverlässig) statt per Titel */
+  ueberIsbn?: boolean;
   status: QuellenStatus[];
   lage: Marktlage;
   zeit: string;
@@ -79,48 +93,117 @@ export interface PreisQuelle {
 }
 
 /**
- * Dasselbe Angebot kann über eurobuch UND direkt (z. B. booklooker) kommen.
- * Doppelte (gleiche Plattform, gleicher Händler, gleicher Preis) werden zusammengeführt;
- * bevorzugt wird der Eintrag mit echtem Versand.
+ * Dasselbe Angebot kann über eurobuch UND direkt (z. B. booklooker) kommen, und viele Antiquariate
+ * stellen dasselbe Exemplar auf ZVAB und AbeBooks ein. Doppelte (gleicher Händler, gleicher Preis –
+ * ohne Händlernamen zusätzlich gleiche Plattform) werden zusammengeführt; bevorzugt wird der Eintrag mit echtem Versand.
+ * Sonst zählte ein Buch doppelt und wirkte weniger selten, als es ist.
  */
 export function entdoppeln(angebote: Angebot[]): Angebot[] {
   const map = new Map<string, Angebot>();
   for (const a of angebote) {
-    const k = `${a.plattform.toLowerCase()}|${(a.haendler ?? '').toLowerCase()}|${a.preis.toFixed(2)}`;
+    const h = (a.haendler ?? '').trim().toLowerCase();
+    const k = h && h !== 'privat' ? `${h}|${a.preis.toFixed(2)}` : `${a.plattform.toLowerCase()}|${h}|${a.preis.toFixed(2)}`;
     const vorhanden = map.get(k);
     if (!vorhanden || (vorhanden.versandGeschaetzt && !a.versandGeschaetzt)) map.set(k, a);
   }
   return [...map.values()];
 }
 
-/** Alle aktiven Quellen parallel abfragen. Fällt eine aus, laufen die anderen weiter. */
+export interface MarktOptionen {
+  timeoutMs?: number;
+  /** Prüfkontext für die Angebote (ohne: alle Angebote gelten) */
+  pruef?: Omit<PruefKontext, 'ueberIsbn'>;
+  /** Pause vor dem zweiten Versuch einer zickenden Quelle */
+  wiederholenNachMs?: number;
+}
+
+/** Zugang falsch oder Anfrage kaputt: Ein zweiter Versuch ändert daran nichts. */
+const endgueltig = (fehler: string) => /mit 4\d\d|anmeldung|nicht eingerichtet/i.test(fehler);
+
+/**
+ * Eine Quelle abfragen – mit einem zweiten Versuch bei Netz- oder Serverfehlern und, bei ISBN-Suche ohne
+ * Treffer, einem Versuch mit der alten 10-stelligen ISBN (ältere Bücher sind oft nur so eingestellt).
+ */
+async function frageQuelle(
+  q: PreisQuelle,
+  anfrage: { isbn?: string; titel?: string; autor?: string },
+  timeoutMs: number,
+  pauseMs: number,
+): Promise<{ angebote: Angebot[]; status: QuellenStatus }> {
+  const start = Date.now();
+  const einmal = () => mitTimeout(q.suche(anfrage), timeoutMs);
+  let versuche = 1;
+  try {
+    let angebote: Angebot[];
+    try {
+      angebote = await einmal();
+    } catch (e) {
+      const text = String((e as Error)?.message ?? e);
+      if (endgueltig(text)) throw e;
+      await new Promise((r) => setTimeout(r, pauseMs));
+      versuche = 2;
+      angebote = await einmal();
+    }
+    const isbn10 = anfrage.isbn ? isbn13zu10(anfrage.isbn) : null;
+    if (angebote.length === 0 && isbn10) {
+      angebote = await mitTimeout(q.suche({ isbn: isbn10 }), timeoutMs).catch(() => []);
+    }
+    return { angebote, status: { quelle: q.id, ok: true, anzahl: angebote.length, ms: Date.now() - start, versuche } };
+  } catch (e) {
+    return {
+      angebote: [],
+      status: { quelle: q.id, ok: false, anzahl: 0, fehler: String((e as Error)?.message ?? e), ms: Date.now() - start, versuche },
+    };
+  }
+}
+
+/**
+ * Alle aktiven Quellen parallel abfragen. Fällt eine aus, laufen die anderen weiter.
+ * Danach: Doppelte zusammenführen, Angebote prüfen (Mängelexemplare, anderes Buch …), nach Preis sortieren.
+ */
 export async function marktAbfragen(
   quellen: PreisQuelle[],
   anfrage: { isbn?: string; titel?: string; autor?: string },
-  timeoutMs = 12000,
+  opt: MarktOptionen = {},
 ): Promise<MarktErgebnis> {
   const aktive = quellen.filter((q) => q.aktiv);
   const ergebnisse = await Promise.all(
-    aktive.map(async (q) => {
-      const start = Date.now();
-      try {
-        const angebote = await mitTimeout(q.suche(anfrage), timeoutMs);
-        return { angebote, status: { quelle: q.id, ok: true, anzahl: angebote.length, ms: Date.now() - start } };
-      } catch (e) {
-        return {
-          angebote: [] as Angebot[],
-          status: { quelle: q.id, ok: false, anzahl: 0, fehler: String((e as Error)?.message ?? e), ms: Date.now() - start },
-        };
-      }
-    }),
+    aktive.map((q) => frageQuelle(q, anfrage, opt.timeoutMs ?? 12000, opt.wiederholenNachMs ?? 700)),
   );
-  const angebote = entdoppeln(ergebnisse.flatMap((e) => e.angebote)).sort((a, b) => a.gesamt - b.gesamt);
+  const alle = entdoppeln(ergebnisse.flatMap((e) => e.angebote));
+  const ueberIsbn = !!anfrage.isbn;
+  const p = pruefeAngebote(alle, { ...opt.pruef, titel: opt.pruef?.titel ?? anfrage.titel, autor: opt.pruef?.autor ?? anfrage.autor, ueberIsbn });
+  const angebote = p.gueltig.sort((a, b) => a.gesamt - b.gesamt);
   return {
     angebote,
+    aussortiert: p.aussortiert.sort((a, b) => a.gesamt - b.gesamt),
+    hinweise: p.hinweise,
+    ueberIsbn,
     status: ergebnisse.map((e) => e.status),
     lage: marktlage(angebote),
     zeit: new Date().toISOString(),
   };
+}
+
+/**
+ * Markt mit anderer Auswahl neu zusammensetzen: von Hand aussortierte raus, von Hand zurückgeholte rein.
+ * Schlüssel siehe `angebotSchluessel`.
+ */
+export function marktMitAuswahl(m: MarktErgebnis, raus: string[], rein: string[]): MarktErgebnis {
+  if (raus.length === 0 && rein.length === 0) return m;
+  const r = new Set(raus);
+  const z = new Set(rein);
+  const zurueck = (m.aussortiert ?? []).filter((a) => z.has(angebotSchluessel(a)));
+  const vonHand = m.angebote.filter((a) => r.has(angebotSchluessel(a)));
+  const angebote = [
+    ...m.angebote.filter((a) => !r.has(angebotSchluessel(a))),
+    ...zurueck.map(({ grund: _grund, ...a }) => a),
+  ].sort((a, b) => a.gesamt - b.gesamt);
+  const aussortiert = [
+    ...(m.aussortiert ?? []).filter((a) => !z.has(angebotSchluessel(a))),
+    ...vonHand.map((a) => ({ ...a, grund: 'von Hand aussortiert' })),
+  ].sort((a, b) => a.gesamt - b.gesamt);
+  return { ...m, angebote, aussortiert, lage: marktlage(angebote) };
 }
 
 function mitTimeout<T>(p: Promise<T>, ms: number): Promise<T> {

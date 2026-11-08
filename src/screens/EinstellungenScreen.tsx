@@ -3,7 +3,8 @@ import React, { useEffect, useState } from 'react';
 import { Alert, Modal, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { Text, TextInput } from '../components/Schrift';
 import { Einstellungen, STANDARD_EINSTELLUNGEN, parseZahl, zahlText } from '../einstellungen';
-import { einstellungenSpeichern } from '../db';
+import { einstellungenSpeichern, ignorierteHaendlerLaden, ignorierteHaendlerSpeichern, korrekturenLaden, korrekturenLoeschen } from '../db';
+import { Auswertung, werteKorrekturenAus } from '../lib/korrektur';
 import { quellenTesten } from '../dienste';
 import { Merkmal, MERKMAL_LABEL, ZweigRegeln, Zustand, ZUSTAND_LABEL } from '../lib/preis';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -40,6 +41,15 @@ export function EinstellungenScreen({ einst, onGespeichert, onEinfuehrung }: Pro
   const [probeDaten, setProbeDaten] = useState<FeierDaten | null>(null);
   const rand = useSafeAreaInsets();
   useEffect(() => setE(einst), [einst]);
+  const [ignoriert, setIgnoriert] = useState<string[]>([]);
+  const [auswertung, setAuswertung] = useState<Auswertung | null>(null);
+  // Bei jedem Öffnen frisch: Beides ändert sich beim Auspreisen, nicht hier
+  useEffect(() => {
+    ignorierteHaendlerLaden().then(setIgnoriert).catch(() => undefined);
+    korrekturenLaden()
+      .then((k) => setAuswertung(werteKorrekturenAus(k)))
+      .catch(() => undefined);
+  }, [einst]);
 
   const r = e.regeln;
   const setR = (patch: Partial<Einstellungen['regeln']>) => setE({ ...e, regeln: { ...r, ...patch } });
@@ -156,6 +166,102 @@ export function EinstellungenScreen({ einst, onGespeichert, onEinfuehrung }: Pro
           <ZahlFeld label="Massenware-Abschlag" einheit="%" schritt={1} max={90} wert={pz(r.knappheit.massenware)} setze={(v) => setK({ massenware: v / 100 })} />
           <ZahlFeld label="Nicht unterbieten bis … Angebote" schritt={1} max={10} wert={r.knappheit.nichtUnterbietenBis} setze={(v) => setK({ nichtUnterbietenBis: Math.round(v) })} />
           <ZahlFeld label="Keine Knappheit bei Neuerscheinungen der letzten … Jahre" schritt={1} max={30} wert={r.knappheit.neuBisJahre} setze={(v) => setK({ neuBisJahre: Math.round(v) })} />
+        </Abschnitt>
+
+        <Abschnitt titel="Vergleich absichern" icon="check-circle" farbe={F.gruen}>
+          <Text style={st.klein}>
+            Ein einzelnes falsches Angebot ganz unten soll nicht den Preis bestimmen. Mängelexemplare, Hörbücher, Sets, nur Umschläge,
+            teurer Auslandsversand und – bei der Titelsuche – Angebote mit anderem Titel/Autor werden immer aussortiert und stehen mit Grund
+            unter „aussortiert“. Was übergangen wird, steht in der Rechnung.
+          </Text>
+          <Schalter
+            label="Ausreißer nach unten übergehen"
+            wert={r.robust.ausreisserUebergehen}
+            setze={(v) => setR({ robust: { ...r.robust, ausreisserUebergehen: v } })}
+          />
+          <Schalter
+            label="Großhändler (momox, rebuy …) übergehen"
+            wert={r.robust.grosshaendlerUebergehen}
+            setze={(v) => setR({ robust: { ...r.robust, grosshaendlerUebergehen: v } })}
+          />
+          <ZahlFeld
+            label="Laden: Mittel der 2 günstigsten ab … Angeboten (0 = aus)"
+            schritt={1}
+            max={50}
+            wert={r.robust.mittelAusZweiAb}
+            setze={(v) => setR({ robust: { ...r.robust, mittelAusZweiAb: Math.round(v) } })}
+          />
+        </Abschnitt>
+
+        <Abschnitt titel="Ignorierte Händler" icon="store-off" farbe={F.grau}>
+          <Text style={st.klein}>Über ✕ im Preis-Blatt hinzugefügt. Ihre Angebote zählen nie als Vergleich. Antippen = wieder zulassen.</Text>
+          {ignoriert.length === 0 ? (
+            <Text style={[st.klein, { marginTop: 6 }]}>Keine.</Text>
+          ) : (
+            <View style={st.reihe}>
+              {ignoriert.map((h) => (
+                <Chip
+                  key={h}
+                  icon="close"
+                  label={h}
+                  farbe={F.grau}
+                  onPress={async () => {
+                    const neu = ignoriert.filter((x) => x !== h);
+                    await ignorierteHaendlerSpeichern(neu);
+                    setIgnoriert(neu);
+                  }}
+                />
+              ))}
+            </View>
+          )}
+        </Abschnitt>
+
+        <Abschnitt titel="Korrektur-Protokoll" icon="chart-line" farbe={F.blau}>
+          <Text style={st.klein}>
+            Jede Abweichung vom Vorschlag wird gemerkt: Preis von Hand geändert, anderes Vergleichsangebot gewählt, Angebot aussortiert.
+            Nach ein paar Wochen zeigt sich, welche Regel systematisch danebenliegt.
+          </Text>
+          {auswertung && auswertung.n > 0 ? (
+            <View style={{ marginTop: 8, gap: 4 }}>
+              <Text style={st.wert}>
+                {auswertung.n} Korrekturen · {auswertung.mitPreis} mit Preisänderung
+                {auswertung.mittel != null ? ` (im Schnitt ${auswertung.mittel >= 0 ? '+' : '−'}${Math.round(Math.abs(auswertung.mittel) * 100)} %)` : ''}
+              </Text>
+              <Text style={st.klein}>
+                {auswertung.vergleichVonHand}× anderen Vergleich gewählt · {auswertung.aussortiertVonHand}× Angebote aussortiert
+              </Text>
+              {auswertung.nachKategorie.map((g) => (
+                <Text key={g.name} style={st.klein}>
+                  {g.name}: {g.n}× · {g.mittel >= 0 ? '+' : '−'}{Math.round(Math.abs(g.mittel) * 100)} %
+                </Text>
+              ))}
+              {auswertung.auffaellig.map((a) => (
+                <Text key={a} style={[st.klein, { color: F.rot, fontWeight: '700' }]}>⚑ {a}</Text>
+              ))}
+              <View style={[st.reihe, { marginTop: 6 }]}>
+                <Chip
+                  icon="trash-can-outline"
+                  label="Protokoll leeren"
+                  farbe={F.rot}
+                  onPress={() =>
+                    Alert.alert('Korrektur-Protokoll leeren?', 'Alle gemerkten Korrekturen werden gelöscht. Das lässt sich nicht rückgängig machen.', [
+                      { text: 'Abbrechen', style: 'cancel' },
+                      {
+                        text: 'Leeren',
+                        style: 'destructive',
+                        onPress: async () => {
+                          await korrekturenLoeschen();
+                          setAuswertung(werteKorrekturenAus([]));
+                        },
+                      },
+                    ])
+                  }
+                />
+              </View>
+            </View>
+          ) : (
+            <Text style={[st.klein, { marginTop: 6 }]}>Noch keine Korrekturen.</Text>
+          )}
         </Abschnitt>
 
         <Abschnitt titel="Seltenheit & Glitzer" icon="star-four-points" farbe={F.lila}>
@@ -375,6 +481,7 @@ const st = StyleSheet.create({
   ueberschrift: { flex: 1, fontSize: 13, fontWeight: '800', color: F.grau, textTransform: 'uppercase', letterSpacing: 1 },
   punkt: { width: 12, height: 12, borderRadius: 6 },
   klein: { fontSize: 12, color: F.grau, marginBottom: 6 },
+  wert: { fontSize: 14, fontWeight: '700', color: F.tinte },
   feld: { marginTop: 8 },
   merkmalBlock: { borderTopWidth: 2, borderTopColor: F.tinte, paddingTop: 6, marginTop: 6 },
   feldReihe: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 },
