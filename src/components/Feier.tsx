@@ -20,6 +20,8 @@ import { Seltenheit } from '../lib/seltenheit';
 import { euro } from '../lib/preis';
 import { rueckmeldung } from '../lib/haptik';
 import { fehlerText } from '../lib/fehler';
+import { findeWikiArtikel } from '../lib/wiki';
+import { sachgruppeOhneCode } from '../lib/bereiche';
 import { ABSTAND, aufFarbe, F, KASTEN, SCHRIFT } from '../theme';
 
 export interface FeierDaten {
@@ -47,6 +49,28 @@ function Buehne({ daten, effekte, onZu }: { daten: FeierDaten; effekte: boolean;
   const farbe = STUFE_FARBE[s.stufe];
   const rar = s.stufe === 'raritaet';
   const kartenBreite = Math.min(width - ABSTAND * 4, 340);
+  const laenge = daten.titel.titel.length;
+  const titelGroesse = laenge > 90 ? 16 : laenge > 55 ? 18 : laenge > 30 ? 20 : 22;
+  const gruende = s.gruende.filter((g) => !g.startsWith('Preis '));
+  // Worum geht's: Wikipedia-Kurzbeschreibung des Werks, sonst die DNB-Sachgruppe
+  const [kurz, setKurz] = useState<string | null>(
+    daten.titel.sachgruppen?.length ? daten.titel.sachgruppen.map(sachgruppeOhneCode).join(' · ') : null,
+  );
+  useEffect(() => {
+    let aktiv = true;
+    findeWikiArtikel(daten.titel.titel, daten.titel.autoren[0])
+      .then((a) => {
+        if (!aktiv || !a || a.art !== 'werk') return;
+        const satz = a.auszug?.match(/^.+?[.!?](\s|$)/)?.[0]?.trim();
+        // Der erste Satz des Artikels sagt meist, was es ist und worum es geht; zu lang → nur die Kurzbeschreibung
+        const text = satz && satz.length <= 170 ? satz : a.beschreibung;
+        if (text) setKurz(text);
+      })
+      .catch(() => undefined);
+    return () => {
+      aktiv = false;
+    };
+  }, []);
 
   // Ein Wert pro Phase – alle nativ animiert
   const dunkel = useRef(new Animated.Value(0)).current;
@@ -239,15 +263,17 @@ function Buehne({ daten, effekte, onZu }: { daten: FeierDaten; effekte: boolean;
             ],
           }}
         >
-          {/* Rückseite */}
-          <Animated.View style={[st.rueckseite, { width: kartenBreite, borderColor: farbe, transform: [{ perspective: 900 }, { rotateY: drehRueck }] }]}>
-            <Text style={st.rueckZeichen}>{rar ? '✦✦' : '✦'}</Text>
-            <Text style={st.rueckHand}>was ist das?</Text>
-          </Animated.View>
-
-          {/* Vorderseite – das, was geteilt wird */}
-          <Animated.View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }, { transform: [{ perspective: 900 }, { rotateY: drehVorne }] }]}>
-            <View ref={karte} collapsable={false} style={[st.vorderseite, { width: kartenBreite, boxShadow: `8px 8px 0px ${farbe}` }]}>
+          {/* Vorderseite – das, was geteilt wird. Sie bestimmt die Kartengröße, damit der Titel immer ganz draufpasst. */}
+          <Animated.View style={{ transform: [{ perspective: 900 }, { rotateY: drehVorne }] }}>
+            <View ref={karte} collapsable={false} style={[st.vorderseite, { width: kartenBreite, boxShadow: `8px 8px 0px ${rar ? F.gelb : farbe}` }]}>
+              {/* Rarität: Holo-Regenbogen als Kante oben */}
+              {rar && (
+                <View style={st.regenbogen}>
+                  {KONFETTI_FARBEN.map((f) => (
+                    <View key={f} style={{ flex: 1, backgroundColor: f }} />
+                  ))}
+                </View>
+              )}
               <View style={st.kopfReihe}>
                 <Animated.View style={[st.stufe, { backgroundColor: farbe }, { opacity: stufe, transform: [{ scale: stufe.interpolate({ inputRange: [0, 1], outputRange: [2.2, 1] }) }] }]}>
                   <Text style={[st.stufeText, { color: aufFarbe(farbe) }]}>{rar ? '✦✦ RARITÄT' : '✦ SELTEN'}</Text>
@@ -256,7 +282,7 @@ function Buehne({ daten, effekte, onZu }: { daten: FeierDaten; effekte: boolean;
               </View>
 
               <Animated.View style={[st.coverReihe, einblenden(cover, 24)]}>
-                <Funkeln aktiv={bewegung} farbe={farbe} anzahl={5}>
+                <Funkeln aktiv={bewegung} farbe={rar ? F.gelb : farbe} anzahl={5}>
                   <HoloGlanz aktiv={bewegung && rar} breite={96}>
                     <Cover isbn={daten.titel.isbn} url={daten.titel.coverUrl} style={st.cover} iconGroesse={36} />
                   </HoloGlanz>
@@ -264,23 +290,26 @@ function Buehne({ daten, effekte, onZu }: { daten: FeierDaten; effekte: boolean;
               </Animated.View>
 
               <Animated.View style={einblenden(titel)}>
-                <Text style={st.titel} numberOfLines={3}>{daten.titel.titel}</Text>
-                <Text style={st.autor} numberOfLines={1}>
-                  {[daten.titel.autoren[0]?.split(',').reverse().join(' ').trim(), daten.titel.jahr].filter(Boolean).join(' · ')}
+                {/* Ganzer Titel, lange Titel etwas kleiner statt abgeschnitten */}
+                <Text style={[st.titel, { fontSize: titelGroesse }]}>{daten.titel.titel}</Text>
+                <Text style={st.autor}>
+                  {[daten.titel.autoren[0]?.split(',').reverse().join(' ').trim(), daten.titel.verlag, daten.titel.jahr].filter(Boolean).join(' · ')}
                 </Text>
-                <Text style={[st.preis, { color: F.tinte }]}>{daten.preis != null ? euro(preisAnzeige) : '—'}</Text>
-                {s.gruende.length > 0 && <Text style={st.gruende}>{s.gruende.join(' · ')}</Text>}
+                {kurz ? <Text style={st.kurz}>{kurz}</Text> : null}
+                <Text style={st.preis}>{daten.preis != null ? euro(preisAnzeige) : '—'}</Text>
+                {/* Der Preis steht schon groß da – als Grund nicht noch einmal */}
+                {gruende.length > 0 && <Text style={st.gruende}>{gruende.join(' · ')}</Text>}
               </Animated.View>
-
-              <View style={st.fusszeile}>
-                <View style={st.streifen}>
-                  {KONFETTI_FARBEN.map((f) => (
-                    <View key={f} style={{ flex: 1, backgroundColor: f }} />
-                  ))}
-                </View>
-                <Text style={st.marke}>Bleistift · Buchgenossenschaft Hennwack</Text>
-              </View>
             </View>
+          </Animated.View>
+
+          {/* Rückseite – liegt deckungsgleich über der Vorderseite */}
+          <Animated.View
+            pointerEvents="none"
+            style={[StyleSheet.absoluteFill, st.rueckseite, { borderColor: rar ? F.gelb : farbe, transform: [{ perspective: 900 }, { rotateY: drehRueck }] }]}
+          >
+            <Text style={st.rueckZeichen}>{rar ? '✦✦' : '✦'}</Text>
+            <Text style={st.rueckHand}>was ist das?</Text>
           </Animated.View>
         </Animated.View>
       </View>
@@ -308,7 +337,6 @@ const st = StyleSheet.create({
   strahl: { position: 'absolute', top: 0, width: 44, opacity: 0.16 },
   mitte: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
   rueckseite: {
-    aspectRatio: 0.66,
     backgroundColor: F.tinte,
     borderWidth: 6,
     alignItems: 'center',
@@ -326,11 +354,10 @@ const st = StyleSheet.create({
   cover: { width: 96, height: 144, ...KASTEN, backgroundColor: F.sand },
   titel: { fontSize: 22, fontWeight: '800', color: F.tinte, textAlign: 'center', letterSpacing: -0.3 },
   autor: { fontSize: 14, color: F.grau, textAlign: 'center', marginTop: 2 },
-  preis: { fontSize: 44, fontWeight: '800', textAlign: 'center', marginTop: 8, fontVariant: ['tabular-nums'] },
+  preis: { fontSize: 44, fontWeight: '800', color: F.tinte, textAlign: 'center', marginTop: 8, fontVariant: ['tabular-nums'] },
   gruende: { fontSize: 12, color: F.grau, textAlign: 'center', marginTop: 2 },
-  fusszeile: { marginTop: 14 },
-  streifen: { flexDirection: 'row', height: 6, ...KASTEN, borderWidth: 1 },
-  marke: { fontSize: 11, fontWeight: '700', color: F.grau, textAlign: 'center', marginTop: 6, letterSpacing: 0.5 },
+  regenbogen: { flexDirection: 'row', height: 8, marginTop: -ABSTAND, marginHorizontal: -ABSTAND, marginBottom: 12, borderBottomWidth: 2, borderBottomColor: F.tinte },
+  kurz: { fontSize: 14, color: F.tinte, textAlign: 'center', marginTop: 8, lineHeight: 19 },
   knoepfe: { position: 'absolute', left: ABSTAND, right: ABSTAND, bottom: 0, flexDirection: 'row', gap: 10 },
   tippHinweis: { position: 'absolute', alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 5 },
   tippText: { color: '#bdb5a6', fontSize: 12, fontWeight: '600' },

@@ -14,7 +14,7 @@ export const STUFE_FARBE: Record<Stufe, string> = {
   gewoehnlich: F.grau,
   gefragt: '#8E99A6', // Silber
   selten: '#eecb33', // Gold = Fountain-Gelb
-  raritaet: '#B04FD6', // Holo-Violett, im Rahmen als Regenbogen
+  raritaet: '#1d1d1b', // Tinte-Schwarz; Glanz, Rahmen und Feier zeigen dazu den Holo-Regenbogen
 };
 const REGENBOGEN = ['#E4572E', '#F3C623', '#2E9E6B', '#1E9AA8', '#2D6CDF', '#B04FD6', '#E4572E'];
 
