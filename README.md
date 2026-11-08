@@ -28,7 +28,7 @@ npx tsc --noEmit    # Typprüfung
 
 **iPhone (Expo Go):** `powershell -ExecutionPolicy Bypass -File scripts\expo-tunnel.ps1` – fragt einen Expo-Zugangstoken ab, startet Metro mit Tunnel. In Expo Go fehlt nur die Titelseiten-Texterkennung.
 
-**Android (eigener Build):** `powershell -ExecutionPolicy Bypass -File scripts\android-build.ps1 -Neu` (nach SDK-Updates oder neuen nativen Paketen `-Neu`, für den Emulator `-Abi x86_64`). Das Skript umgeht per `subst` das Leerzeichen im Windows-Benutzerpfad, das der Android-NDK nicht verträgt, und nutzt JDK 17.
+**Android (eigener Build):** `powershell -ExecutionPolicy Bypass -File scripts\android-build.ps1 -Neu` (nach SDK-Updates oder neuen nativen Paketen `-Neu`, für den Emulator `-Abi x86_64`). Voraussetzungen: JDK 17 (Temurin), im Android-SDK **CMake 3.31.6** (Android Studio → SDK Manager → SDK Tools; dessen ninja kann Pfade über 260 Zeichen) und unter Windows `LongPathsEnabled=1`.
 
 Die nativen Ordner `android/` und `ios/` werden aus `app.json` erzeugt (`npx expo prebuild`) und nicht eingecheckt.
 
@@ -50,5 +50,4 @@ scripts/                   Android-Build, Expo-Tunnel
 ## Offen
 
 - eurobuch: Treffer laut Bedingungen nach 3 Stunden löschen (bisher werden die Top-5 dauerhaft gespeichert).
-- Android-Build auf SDK 58 schlägt noch fehl (vermutlich das Texterkennungs-Paket).
 - Audit mit Testmatrix: `AUDIT-2026-11-08.md`.
