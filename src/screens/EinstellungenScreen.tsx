@@ -163,8 +163,8 @@ export function EinstellungenScreen({ einst, onGespeichert, onEinfuehrung }: Pro
             Stufen Gefragt → Selten → Rarität. Glitzer gibt es nur, wenn die Gründe belegt sind (Fehlalarm-Schutz) – sonst erscheint das Abzeichen mit „prüfen“. Neuerscheinungen und noch lieferbare Bücher zählen nicht als selten.
           </Text>
           <Schalter label="Glitzer-Effekte" wert={sr.effekte} setze={(v) => setS({ effekte: v })} />
-          <Schalter label="Feier bei seltenen Büchern (mit Teilen)" wert={sr.feier} setze={(v) => setS({ feier: v })} />
-          <Schalter label="Karte kurz aufklappen bei jedem Scan" wert={sr.aufklappen} setze={(v) => setS({ aufklappen: v })} />
+          <Schalter label="Große Enthüllung bei Gold und Schwarz" wert={sr.feier} setze={(v) => setS({ feier: v })} />
+          <Schalter label="Karten neigen sich mit dem Handy (3D)" wert={sr.neigung} setze={(v) => setS({ neigung: v })} />
           <Text style={[st.label, { marginTop: 8 }]}>Karten ausprobieren (Gold und Schwarz mit großer Feier)</Text>
           <View style={st.reihe}>
             {PROBEN.map((x) => (

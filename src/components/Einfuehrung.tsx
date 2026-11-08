@@ -43,9 +43,10 @@ const SEITEN: Seite[] = [
     icon: 'tag',
     farbe: F.blau,
     notiz: 'schritt 2',
-    titel: 'Live-Karte und Preis',
+    titel: 'Die Buch-Karte',
     punkte: [
-      { icon: 'gesture-tap', text: 'Die Karte erscheint sofort mit vorläufigem Preis. Antippen zum Auspreisen.' },
+      { icon: 'gesture-tap', text: 'Während der Suche steht das Buch unten. Ist es erkannt, springt es als Karte in die Mitte – Bronze, Silber, Gold oder Schwarz.' },
+      { icon: 'arrow-right', text: 'Karte antippen = auspreisen. Wegwischen oder nächsten Barcode scannen = weiter.' },
       { icon: 'star-half-full', text: 'Zustand und Merkmale wählen – der Bleistiftpreis rechnet live mit.' },
       { icon: 'radiobox-marked', text: 'Anderes Vergleichsangebot? Einfach antippen.' },
     ],
@@ -67,7 +68,7 @@ const SEITEN: Seite[] = [
     notiz: 'das beste zum schluss',
     titel: 'Seltene Bücher',
     punkte: [
-      { icon: 'diamond-stone', text: '✦ Selten und ✦✦ Rarität werden gefeiert – mit Karte zum Teilen fürs Team oder Instagram.' },
+      { icon: 'diamond-stone', text: 'Gold (selten) und Schwarz (Rarität) kommen mit großer Enthüllung und Vibration. Jede Karte lässt sich als Bild teilen.' },
       { icon: 'alert', text: 'Steht „prüfen“ dabei, ist die Seltenheit nicht belegt: lieber selbst nachsehen.' },
       { icon: 'cog', text: 'Alles lässt sich in den Einstellungen anpassen. Diese Einführung findest du dort wieder.' },
     ],

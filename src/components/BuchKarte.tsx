@@ -2,7 +2,7 @@
 // Namensband unten. Vier Metalle nach Seltenheit:
 //   Bronze = gewöhnlich · Silber = gefragt · Gold = selten · Schwarz = Rarität (mit Holo-Regenbogen).
 // Ein Glanzstreifen wandert langsam über das Metall (nativ animiert, aus bei „Bewegung reduzieren“).
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Text } from './Schrift';
@@ -11,6 +11,9 @@ import { HoloGlanz } from './Glanz';
 import { Stufe } from '../lib/seltenheit';
 import { Titel } from '../lib/titel';
 import { F } from '../theme';
+import { BegrenzteMap } from '../lib/cover';
+import { findeWikiArtikel } from '../lib/wiki';
+import { sachgruppeOhneCode } from '../lib/bereiche';
 
 export type Metall = 'bronze' | 'silber' | 'gold' | 'schwarz';
 
@@ -149,3 +152,34 @@ const st = StyleSheet.create({
   kurz: { fontSize: 12.5, marginTop: 6, lineHeight: 17 },
   regenbogen: { flexDirection: 'row', height: 6, marginHorizontal: -12, marginBottom: -12, marginTop: 10 },
 });
+
+const kurzCache = new BegrenzteMap<string, string>(200);
+
+/**
+ * Worum geht's – ein Satz für die Karte: der erste Satz des Wikipedia-Artikels zum Werk (zu lang → dessen
+ * Kurzbeschreibung), bis dahin bzw. ohne Artikel die DNB-Sachgruppe. Ergebnisse werden je Titel gemerkt.
+ */
+export function useKurzbeschreibung(titel: Titel): string | null {
+  const schluessel = `${titel.titel}|${titel.autoren[0] ?? ''}`;
+  const [kurz, setKurz] = useState<string | null>(
+    kurzCache.get(schluessel) ?? (titel.sachgruppen?.length ? titel.sachgruppen.map(sachgruppeOhneCode).join(' · ') : null),
+  );
+  useEffect(() => {
+    if (kurzCache.has(schluessel)) return;
+    let aktiv = true;
+    findeWikiArtikel(titel.titel, titel.autoren[0])
+      .then((a) => {
+        if (!a || a.art !== 'werk') return;
+        const satz = a.auszug?.match(/^.+?[.!?](\s|$)/)?.[0]?.trim();
+        const text = satz && satz.length <= 170 ? satz : a.beschreibung;
+        if (!text) return;
+        kurzCache.set(schluessel, text);
+        if (aktiv) setKurz(text);
+      })
+      .catch(() => undefined);
+    return () => {
+      aktiv = false;
+    };
+  }, [schluessel]);
+  return kurz;
+}

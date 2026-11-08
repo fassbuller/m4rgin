@@ -22,6 +22,8 @@ export interface SeltenheitsRegeln {
   feier: boolean;
   /** Kurzes Aufklappen der Buch-Karte bei jedem Scan (ohne große Feier) */
   aufklappen: boolean;
+  /** Karten neigen sich leicht mit dem Handy (3D) */
+  neigung: boolean;
   gefragtBisAngebote: number;
   seltenBisAngebote: number;
   raritaetBisAngebote: number;
@@ -46,6 +48,7 @@ export const STANDARD_SELTENHEIT: SeltenheitsRegeln = {
   vibration: true,
   feier: true,
   aufklappen: true,
+  neigung: true,
   gefragtBisAngebote: 10,
   seltenBisAngebote: 3,
   raritaetBisAngebote: 1,

@@ -12,7 +12,8 @@ import { StatusBar } from 'expo-status-bar';
 import * as Sharing from 'expo-sharing';
 import { captureRef } from 'react-native-view-shot';
 import { Text } from './Schrift';
-import { BuchKarte } from './BuchKarte';
+import { BuchKarte, useKurzbeschreibung } from './BuchKarte';
+import { Neigend } from './Neigung';
 import { STUFE_FARBE, useBewegung } from './Glanz';
 import { Icon, Knopf } from './Teile';
 import { Titel } from '../lib/titel';
@@ -20,8 +21,6 @@ import { Seltenheit } from '../lib/seltenheit';
 import { euro } from '../lib/preis';
 import { rueckmeldung } from '../lib/haptik';
 import { fehlerText } from '../lib/fehler';
-import { findeWikiArtikel } from '../lib/wiki';
-import { sachgruppeOhneCode } from '../lib/bereiche';
 import { ABSTAND, aufFarbe, F, KASTEN, SCHRIFT } from '../theme';
 
 export interface FeierDaten {
@@ -55,24 +54,7 @@ function Buehne({ daten, effekte, onZu }: { daten: FeierDaten; effekte: boolean;
   const kartenBreite = Math.min(width - ABSTAND * 4, 340);
   const gruende = s.gruende.filter((g) => !g.startsWith('Preis '));
   // Worum geht's: Wikipedia-Kurzbeschreibung des Werks, sonst die DNB-Sachgruppe
-  const [kurz, setKurz] = useState<string | null>(
-    daten.titel.sachgruppen?.length ? daten.titel.sachgruppen.map(sachgruppeOhneCode).join(' · ') : null,
-  );
-  useEffect(() => {
-    let aktiv = true;
-    findeWikiArtikel(daten.titel.titel, daten.titel.autoren[0])
-      .then((a) => {
-        if (!aktiv || !a || a.art !== 'werk') return;
-        const satz = a.auszug?.match(/^.+?[.!?](\s|$)/)?.[0]?.trim();
-        // Der erste Satz des Artikels sagt meist, was es ist und worum es geht; zu lang → nur die Kurzbeschreibung
-        const text = satz && satz.length <= 170 ? satz : a.beschreibung;
-        if (text) setKurz(text);
-      })
-      .catch(() => undefined);
-    return () => {
-      aktiv = false;
-    };
-  }, []);
+  const kurz = useKurzbeschreibung(daten.titel);
 
   // Ein Wert pro Phase – alle nativ animiert
   const dunkel = useRef(new Animated.Value(0)).current;
@@ -267,13 +249,16 @@ function Buehne({ daten, effekte, onZu }: { daten: FeierDaten; effekte: boolean;
         >
           {/* Vorderseite – die Sammelkarte; genau sie wird als Bild geteilt */}
           <Animated.View style={{ transform: [{ perspective: 900 }, { rotateY: drehVorne }] }}>
-            <View ref={karte} collapsable={false} style={{ boxShadow: `8px 8px 0px ${rar ? F.gelb : F.tinte}` }}>
-              <BuchKarte
-                inhalt={{ titel: daten.titel, preis: daten.preis != null ? preisAnzeige : null, stufe: s.stufe, kurz, ort: daten.ort }}
-                breite={kartenBreite}
-                bewegung={bewegung}
-              />
-            </View>
+            {/* Leicht mit dem Handy neigen wie im Scanner */}
+            <Neigend aktiv={bewegung}>
+              <View ref={karte} collapsable={false} style={{ boxShadow: `8px 8px 0px ${rar ? F.gelb : F.tinte}` }}>
+                <BuchKarte
+                  inhalt={{ titel: daten.titel, preis: daten.preis != null ? preisAnzeige : null, stufe: s.stufe, kurz, ort: daten.ort }}
+                  breite={kartenBreite}
+                  bewegung={bewegung}
+                />
+              </View>
+            </Neigend>
             {gruende.length > 0 && <Animated.Text style={[st.gruende, einblenden(titel)]}>{gruende.join(' · ')}</Animated.Text>}
           </Animated.View>
 

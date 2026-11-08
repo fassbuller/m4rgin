@@ -19,8 +19,7 @@ import { Einstellungen } from '../einstellungen';
 import { LogEintrag, logAuspreisen, logSuche, logVerworfen, Methode } from '../db';
 import { marktFuer, seltenheitFuer, sucheFelder, sucheIsbn, trendsFuer, vorlaeufig } from '../dienste';
 import { useBewegung } from '../components/Glanz';
-import { Feier, FeierDaten } from '../components/Feier';
-import { KurzKarte } from '../components/KurzKarte';
+import { MitteKarte } from '../components/MitteKarte';
 import { KartenInhalt } from '../components/BuchKarte';
 import { LiveKarte } from '../components/LiveKarte';
 import { AuspreisDaten, PreisSheet } from '../components/PreisSheet';
@@ -87,32 +86,20 @@ export function ScanScreen({ aktiv, einst, stapel, onStapelGeaendert, onZumStape
   );
   // Einmal pro Buch: bestätigt seltene Funde werden gefeiert (Vollbild-Enthüllung mit Teilen) –
   // ist die Feier aus, gibt es nur die Vibration; man merkt es so oder so, ohne hinzuschauen.
-  const [feier, setFeier] = useState<FeierDaten | null>(null);
-  const [kurzKarte, setKurzKarte] = useState<KartenInhalt | null>(null);
-  const gefeiert = useRef<number | null>(null);
-  useEffect(() => {
-    if (!vorgang?.titel || !seltenheit || vorgang.marktLaedt) return;
-    if (gefeiert.current === vorgang.start) return;
-    gefeiert.current = vorgang.start;
-    const gross = seltenheit.effekt === 'voll' && (seltenheit.stufe === 'selten' || seltenheit.stufe === 'raritaet');
-    const ort = vorgang.vorlaeufig ? KATEGORIE_LABEL[vorgang.vorlaeufig.kategorie] : null;
-    // Gold und Schwarz: große Feier (wenn eingeschaltet)
-    if (gross && einst.seltenheit.feier && !sheetOffen) {
-      setFeier({ titel: vorgang.titel, preis: vorgang.vorlaeufig?.vorschlag ?? null, seltenheit, ort });
-      return;
-    }
-    if (gross && einst.seltenheit.vibration) rueckmeldung(seltenheit.stufe === 'raritaet' ? 'raritaet' : 'selten');
-    // Alle anderen: Karte kurz aufklappen – unbelegte Seltenheit nur als Bronze mit „prüfen“
-    if (einst.seltenheit.aufklappen && !sheetOffen) {
-      setKurzKarte({
-        titel: vorgang.titel,
-        preis: vorgang.vorlaeufig?.vorschlag ?? null,
-        stufe: seltenheit.bestaetigt ? seltenheit.stufe : 'gewoehnlich',
-        pruefen: !seltenheit.bestaetigt,
-        ort,
-      });
-    }
-  }, [seltenheit, vorgang?.start, vorgang?.marktLaedt, einst.seltenheit.vibration, einst.seltenheit.feier, einst.seltenheit.aufklappen]);
+  // Ist das Buch erkannt und bepreist, wandert es von der Leiste unten als Karte in die Mitte
+  // (Bronze bis Schwarz). Unbelegte Seltenheit erscheint als Bronze mit „prüfen“.
+  const karteMittig =
+    !!vorgang?.titel && !vorgang.laedt && !vorgang.marktLaedt && !!vorgang.vorlaeufig && !!seltenheit && !sheetOffen && !treffer && !ocr;
+  const kartenInhalt: KartenInhalt | null =
+    karteMittig && vorgang?.titel && seltenheit
+      ? {
+          titel: vorgang.titel,
+          preis: vorgang.vorlaeufig?.vorschlag ?? null,
+          stufe: seltenheit.bestaetigt ? seltenheit.stufe : 'gewoehnlich',
+          pruefen: !seltenheit.bestaetigt && seltenheit.stufe !== 'gewoehnlich',
+          ort: vorgang.vorlaeufig ? KATEGORIE_LABEL[vorgang.vorlaeufig.kategorie] : null,
+        }
+      : null;
 
   // Suche-Formular
   const [fTitel, setFTitel] = useState('');
@@ -418,7 +405,8 @@ export function ScanScreen({ aktiv, einst, stapel, onStapelGeaendert, onZumStape
 
       {/* Unten: Live-Karte, Auslöser, Stapel */}
       <View style={st.unten}>
-        {vorgang && (
+        {/* Während Suche und Preisabfrage (oder wenn es keinen Preis gibt) bleibt das Buch unten */}
+        {vorgang && !karteMittig && (
           <LiveKarte
             titel={vorgang.titel}
             suchbegriff={vorgang.suchbegriff}
@@ -479,9 +467,18 @@ export function ScanScreen({ aktiv, einst, stapel, onStapelGeaendert, onZumStape
           }}
         />
       )}
-      <Feier daten={feier} effekte={einst.seltenheit.effekte} onZu={() => setFeier(null)} />
-      {kurzKarte && aktiv && (
-        <KurzKarte key={vorgang?.start} inhalt={kurzKarte} bewegung={bewegung} onFertig={() => setKurzKarte(null)} />
+      {kartenInhalt && aktiv && vorgang && (
+        <MitteKarte
+          key={vorgang.start}
+          inhalt={kartenInhalt}
+          gruende={seltenheit?.gruende.filter((g) => !g.startsWith('Preis '))}
+          enthuellung={einst.seltenheit.feier}
+          bewegung={bewegung}
+          neigung={einst.seltenheit.neigung}
+          vibration={einst.seltenheit.vibration}
+          onOeffnen={() => setSheetOffen(true)}
+          onWeg={vorgangBeenden}
+        />
       )}
       {treffer && (
         <TrefferListe
