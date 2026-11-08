@@ -1,0 +1,54 @@
+{
+  "expo": {
+    "name": "Bleistift",
+    "slug": "bleistift",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#fbf6ee",
+    "ios": {
+      "bundleIdentifier": "de.hennwack.bleistift",
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSLocalNetworkUsageDescription": "Bleistift verbindet sich mit dem KI-Rechner (Ollama) im Laden-WLAN.",
+        "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true
+        }
+      }
+    },
+    "android": {
+      "package": "de.hennwack.bleistift",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundImage": "./assets/adaptive-hintergrund.png",
+        "backgroundColor": "#fbf6ee"
+      },
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.VIBRATE"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Bleistift braucht die Kamera, um Barcodes und Titelseiten zu lesen."
+        }
+      ],
+      "expo-sqlite",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 160,
+          "resizeMode": "contain",
+          "backgroundColor": "#fbf6ee"
+        }
+      ],
+      "expo-font",
+      "expo-sharing",
+      "expo-status-bar"
+    ]
+  }
+}

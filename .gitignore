@@ -1,0 +1,26 @@
+# Abhängigkeiten
+node_modules/
+
+# Native Projekte werden von Expo aus app.json erzeugt (npx expo prebuild) –
+# eine Quelle für Android UND iOS, deshalb nicht einchecken.
+android/
+ios/
+
+# Expo / Metro / Builds
+.expo/
+dist/
+web-build/
+*.apk
+*.aab
+*.ipa
+metro.log
+*.log
+
+# Lokale Dateien
+.cam.jpg
+.env
+.env.*
+*.keystore
+local.properties
+.DS_Store
+Thumbs.db
