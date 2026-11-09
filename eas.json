@@ -3,10 +3,16 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "android": { "buildType": "apk" }
+      "android": {
+        "buildType": "apk"
+      },
+      "channel": "development"
     },
     "preview": {
-      "android": { "buildType": "apk" },
+      "channel": "laden",
+      "android": {
+        "buildType": "apk"
+      },
       "distribution": "internal"
     }
   }

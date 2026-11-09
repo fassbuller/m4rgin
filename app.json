@@ -7,6 +7,10 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "backgroundColor": "#fbf6ee",
+    "owner": "fassbuller",
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    },
     "ios": {
       "bundleIdentifier": "de.hennwack.m4rgin",
       "supportsTablet": true,
@@ -27,13 +31,15 @@
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.VIBRATE"
-      ]
+      ],
+      "blockedPermissions": ["android.permission.RECORD_AUDIO"]
     },
     "plugins": [
       [
         "expo-camera",
         {
-          "cameraPermission": "m4rgin braucht die Kamera, um Barcodes und Titelseiten zu lesen."
+          "cameraPermission": "m4rgin braucht die Kamera, um Barcodes und Titelseiten zu lesen.",
+          "recordAudioAndroid": false
         }
       ],
       "expo-sqlite",
@@ -51,6 +57,14 @@
       "expo-sharing",
       "expo-status-bar",
       "expo-secure-store"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "8ca9cd0f-3043-41a2-8d15-32f0ca9aea2f"
+      }
+    },
+    "updates": {
+      "url": "https://u.expo.dev/8ca9cd0f-3043-41a2-8d15-32f0ca9aea2f"
+    }
   }
 }

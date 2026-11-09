@@ -34,6 +34,8 @@ npx tsc --noEmit    # Typprüfung
 
 **iPhone (Expo Go):** `powershell -ExecutionPolicy Bypass -File scripts\expo-tunnel.ps1` – fragt einen Expo-Zugangstoken ab, startet Metro mit Tunnel. In Expo Go fehlt nur die Titelseiten-Texterkennung.
 
+**Testen ohne laufenden PC (EAS Update):** `powershell -ExecutionPolicy Bypass -File scripts\expo-update.ps1` – fragt den Expo-Token ab und veröffentlicht den aktuellen Stand im Kanal `laden` (Laufzeit `exposdk:58.0.0`). In Expo Go öffnen: `exp://u.expo.dev/8ca9cd0f-3043-41a2-8d15-32f0ca9aea2f?channel-name=laden&runtime-version=exposdk:58.0.0`. Nach jeder Änderung das Skript erneut ausführen; Expo Go lädt den neuen Stand beim nächsten Öffnen. Das Skript nutzt `.tmp/` im Projekt als Temp-Ordner, weil Hermes nicht nach `AppData\Local\Temp` schreiben darf.
+
 **Android (eigener Build):** `powershell -ExecutionPolicy Bypass -File scripts\android-build.ps1 -Neu` (nach SDK-Updates oder neuen nativen Paketen `-Neu`, für den Emulator `-Abi x86_64`). Voraussetzungen: JDK 17 (Temurin), im Android-SDK **CMake 3.31.6** (Android Studio → SDK Manager → SDK Tools; dessen ninja kann Pfade über 260 Zeichen) und unter Windows `LongPathsEnabled=1`.
 
 Die nativen Ordner `android/` und `ios/` werden aus `app.json` erzeugt (`npx expo prebuild`) und nicht eingecheckt.
