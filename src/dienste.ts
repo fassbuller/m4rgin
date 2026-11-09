@@ -4,10 +4,10 @@ import { Titel } from './lib/titel';
 import { dnbIsbn, dnbSuche } from './lib/dnb';
 import { openLibraryIsbn } from './lib/openlibrary';
 import { baueCql, SuchFelder } from './lib/suche';
-import { MarktErgebnis, marktAbfragen } from './lib/markt';
+import { MarktErgebnis, marktAbfragen, mitTimeout } from './lib/markt';
 import { eurobuchQuelle, eurobuchUrl, parseEurobuch } from './lib/quellen/eurobuch';
 import { booklookerQuelle, booklookerUrl, parseBooklooker } from './lib/quellen/booklooker';
-import { ebayQuelle } from './lib/quellen/ebay';
+import { appToken, ebayQuelle } from './lib/quellen/ebay';
 import { angebotsSignal, interesseSignal, neuauflageSignal, Signal } from './lib/trend';
 import { berechnePreis, Merkmal, PreisErgebnis, PreisRegeln } from './lib/preis';
 import { bewerteSeltenheit, Seltenheit, SeltenheitsRegeln } from './lib/seltenheit';
@@ -160,15 +160,18 @@ export function seltenheitFuer(
  * „Quellen testen“: holt für eine bekannte ISBN die Rohantwort jeder Quelle (gekürzt)
  * und die Zahl der erkannten Angebote. Zum Prüfen beim ersten Einrichten – nachvollziehbar statt Blackbox.
  */
-export async function quellenTesten(e: Einstellungen, isbn = '9783518468807'): Promise<string> {
+// Testbuch: „Tschick“ – auf allen Plattformen reichlich vorhanden
+export async function quellenTesten(e: Einstellungen, isbn = '9783499256356'): Promise<string> {
   const teile: string[] = [];
+  const sek = (t0: number) => `${((Date.now() - t0) / 1000).toFixed(1)} s`;
   const roh = async (name: string, url: string, parse: (x: string) => number) => {
+    const t0 = Date.now();
     try {
-      const res = await fetch(url);
-      const text = await res.text();
-      teile.push(`■ ${name}: HTTP ${res.status}, ${parse(text)} Angebote erkannt\n${text.slice(0, 1500)}`);
+      const res = await mitTimeout(fetch(url), 15000);
+      const text = await mitTimeout(res.text(), 15000);
+      teile.push(`■ ${name}: HTTP ${res.status}, ${parse(text)} Angebote erkannt (${sek(t0)})\n${text.slice(0, 1500)}`);
     } catch (err) {
-      teile.push(`■ ${name}: Fehler ${String(err)}`);
+      teile.push(`■ ${name}: Fehler nach ${sek(t0)}: ${String(err)}`);
     }
   };
   if (e.booklooker.pid) {
@@ -178,11 +181,16 @@ export async function quellenTesten(e: Einstellungen, isbn = '9783518468807'): P
     await roh('eurobuch', eurobuchUrl(e.eurobuch, { isbn }), (x) => parseEurobuch(x, 0).length);
   } else teile.push('■ eurobuch: kein Zugang eingetragen');
   if (e.ebay.clientId) {
+    // In zwei Schritten, damit man sieht, ob die Anmeldung oder die Suche hängt
+    let t0 = Date.now();
     try {
-      const n = (await ebayQuelle({ ...e.ebay, aktiv: true }, 0).suche({ isbn })).length;
-      teile.push(`■ eBay: ${n} Angebote erkannt`);
+      await mitTimeout(appToken({ ...e.ebay, aktiv: true }), 15000);
+      teile.push(`■ eBay-Anmeldung: ok (${sek(t0)})`);
+      t0 = Date.now();
+      const n = (await mitTimeout(ebayQuelle({ ...e.ebay, aktiv: true }, 0).suche({ isbn }), 15000)).length;
+      teile.push(`■ eBay-Suche: ${n} Angebote erkannt (${sek(t0)})`);
     } catch (err) {
-      teile.push(`■ eBay: Fehler ${String(err)}`);
+      teile.push(`■ eBay: Fehler nach ${sek(t0)}: ${String(err)}`);
     }
   } else teile.push('■ eBay: kein Zugang eingetragen');
   return teile.join('\n\n');

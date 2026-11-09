@@ -13,6 +13,16 @@ import { Korrektur } from './lib/korrektur';
 import { Einstellungen, mitStandards } from './einstellungen';
 import { geheimnisseSpeichern, mitGeheimnissen, ohneGeheimnisse } from './geheim';
 
+/**
+ * eBay-Verkäufernamen sind Nutzerdaten von eBay. m4rgin ist von der „Marketplace Account Deletion“-Pflicht
+ * ausgenommen, weil es keine eBay-Nutzerdaten speichert – deshalb landen sie nie in der Datenbank.
+ */
+export function speicherbarerHaendler(a?: { plattform?: string; quelle?: string; haendler?: string } | null): string | undefined {
+  if (!a) return undefined;
+  if (a.quelle === 'ebay' || a.plattform === 'eBay') return undefined;
+  return a.haendler;
+}
+
 export type Methode = 'barcode' | 'isbn_getippt' | 'foto_ocr' | 'foto_isbn' | 'foto_ki' | 'manuell';
 export type Aktion = 'gesucht' | 'ausgepreist' | 'verworfen';
 
@@ -186,7 +196,7 @@ export async function logAuspreisen(
   const stapel = await aktiverStapelOderNeu();
   // Für die Nachvollziehbarkeit: die 5 günstigsten Angebote zum Zeitpunkt des Auspreisens
   const top = p.markt?.angebote.slice(0, 5).map((a) => ({
-    p: a.plattform, h: a.haendler, g: a.gesamt, v: a.versandGeschaetzt ? 'geschätzt' : a.versand, z: a.zustandText?.slice(0, 120), u: a.url,
+    p: a.plattform, h: speicherbarerHaendler(a), g: a.gesamt, v: a.versandGeschaetzt ? 'geschätzt' : a.versand, z: a.zustandText?.slice(0, 120), u: a.url,
   }));
   await d.runAsync(
     `UPDATE log SET quelle=?, isbn=?, titel=?, autor=?, verlag=?, jahr=?, neupreis=?,
@@ -215,7 +225,7 @@ export async function logAuspreisen(
     p.markt?.lage.min ?? null,
     p.markt?.lage.median ?? null,
     p.anker?.plattform ?? null,
-    p.anker?.haendler ?? null,
+    speicherbarerHaendler(p.anker) ?? null,
     p.anker?.url ?? null,
     top ? JSON.stringify(top) : null,
     p.trend,
@@ -465,7 +475,7 @@ export async function eintragAktualisieren(id: number, a: EintragAenderung) {
   const d = await db();
   if (a.markt) {
     const top = a.markt.angebote.slice(0, 5).map((x) => ({
-      p: x.plattform, h: x.haendler, g: x.gesamt, v: x.versandGeschaetzt ? 'geschätzt' : x.versand, z: x.zustandText?.slice(0, 120), u: x.url,
+      p: x.plattform, h: speicherbarerHaendler(x), g: x.gesamt, v: x.versandGeschaetzt ? 'geschätzt' : x.versand, z: x.zustandText?.slice(0, 120), u: x.url,
     }));
     await d.runAsync(
       `UPDATE log SET zustand=?, merkmale=?, vorschlag=?, endpreis=?, kategorie=?, vergleichspreis=?, neupreis=?,
@@ -482,7 +492,7 @@ export async function eintragAktualisieren(id: number, a: EintragAenderung) {
       a.markt.lage.min,
       a.markt.lage.median,
       a.anker?.plattform ?? null,
-      a.anker?.haendler ?? null,
+      speicherbarerHaendler(a.anker) ?? null,
       a.anker?.url ?? null,
       top.length ? JSON.stringify(top) : null,
       id,
@@ -493,7 +503,7 @@ export async function eintragAktualisieren(id: number, a: EintragAenderung) {
     await d.runAsync(
       'UPDATE log SET anker_plattform=?, anker_haendler=?, anker_url=? WHERE id=?',
       a.ankerGewaehlt.plattform,
-      a.ankerGewaehlt.haendler ?? null,
+      speicherbarerHaendler(a.ankerGewaehlt) ?? null,
       a.ankerGewaehlt.url ?? null,
       id,
     );

@@ -69,8 +69,13 @@ export function EinstellungenScreen({ einst, onGespeichert, onEinfuehrung }: Pro
 
   const testen = async () => {
     setTestLaeuft(true);
-    setTest(await quellenTesten(e));
-    setTestLaeuft(false);
+    try {
+      setTest(await quellenTesten(e));
+    } catch (err) {
+      setTest(`Test abgebrochen: ${String(err)}`);
+    } finally {
+      setTestLaeuft(false);
+    }
   };
 
   return (

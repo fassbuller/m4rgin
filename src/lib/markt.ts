@@ -206,7 +206,7 @@ export function marktMitAuswahl(m: MarktErgebnis, raus: string[], rein: string[]
   return { ...m, angebote, aussortiert, lage: marktlage(angebote) };
 }
 
-function mitTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+export function mitTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   return new Promise((resolve, reject) => {
     const t = setTimeout(() => reject(new Error('Zeitüberschreitung')), ms);
     p.then(

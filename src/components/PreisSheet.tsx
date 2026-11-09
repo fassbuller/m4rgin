@@ -119,7 +119,8 @@ export function PreisSheet(p: Props) {
     const knoepfe: { text: string; style?: 'cancel' | 'destructive'; onPress?: () => void }[] = [
       { text: 'Nur hier aussortieren', onPress: nurHier },
     ];
-    if (a.haendler && a.haendler !== 'privat') {
+    // eBay-Verkäufer werden nicht dauerhaft gespeichert (eBay-Nutzerdaten), also auch nicht auf die Ignorierliste
+    if (a.haendler && a.haendler !== 'privat' && a.quelle !== 'ebay') {
       knoepfe.push({
         text: `„${a.haendler}“ immer ignorieren`,
         style: 'destructive',

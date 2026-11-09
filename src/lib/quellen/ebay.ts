@@ -12,10 +12,26 @@ export interface EbayZugang {
   clientSecret: string;
 }
 
-let token: { wert: string; bis: number } | null = null;
+let token: { wert: string; bis: number; fuer: string } | null = null;
 
-async function appToken(z: EbayZugang): Promise<string> {
-  if (token && token.bis > Date.now() + 60_000) return token.wert;
+/** eBay liefert bei Fehlern JSON mit error_description bzw. errors[].message – das zeigen wir mit an. */
+async function fehlerText(res: Response): Promise<string> {
+  try {
+    const t = await res.text();
+    try {
+      const j = JSON.parse(t);
+      const m = j.error_description ?? j.errors?.[0]?.longMessage ?? j.errors?.[0]?.message ?? j.error;
+      if (m) return String(m);
+    } catch {}
+    return t.slice(0, 200);
+  } catch {
+    return '';
+  }
+}
+
+export async function appToken(z: EbayZugang): Promise<string> {
+  const fuer = `${z.clientId}:${z.clientSecret}`;
+  if (token && token.fuer === fuer && token.bis > Date.now() + 60_000) return token.wert;
   const res = await fetch('https://api.ebay.com/identity/v1/oauth2/token', {
     method: 'POST',
     headers: {
@@ -24,9 +40,16 @@ async function appToken(z: EbayZugang): Promise<string> {
     },
     body: 'grant_type=client_credentials&scope=' + encodeURIComponent('https://api.ebay.com/oauth/api_scope'),
   });
-  if (!res.ok) throw new Error(`eBay-Anmeldung fehlgeschlagen (${res.status})`);
+  if (!res.ok) {
+    const grund = await fehlerText(res);
+    const tipp =
+      res.status === 401
+        ? ' – Client-ID/Secret prüfen: Production-Keyset (nicht Sandbox), App ID + Cert ID, Keyset freigeschaltet (Löschbenachrichtigung erledigt)?'
+        : '';
+    throw new Error(`eBay-Anmeldung fehlgeschlagen (${res.status}${grund ? `: ${grund}` : ''})${tipp}`);
+  }
   const j = await res.json();
-  token = { wert: j.access_token, bis: Date.now() + (j.expires_in ?? 7200) * 1000 };
+  token = { wert: j.access_token, bis: Date.now() + (j.expires_in ?? 7200) * 1000, fuer };
   return token.wert;
 }
 
@@ -84,7 +107,10 @@ export function ebayQuelle(z: EbayZugang, versandPauschale: number): PreisQuelle
           'X-EBAY-C-ENDUSERCTX': 'contextualLocation=country%3DDE%2Czip%3D12163',
         },
       });
-      if (!res.ok) throw new Error(`eBay antwortet mit ${res.status}`);
+      if (!res.ok) {
+        const grund = await fehlerText(res);
+        throw new Error(`eBay antwortet mit ${res.status}${grund ? `: ${grund}` : ''}`);
+      }
       return parseEbay(await res.json(), versandPauschale);
     },
   };
