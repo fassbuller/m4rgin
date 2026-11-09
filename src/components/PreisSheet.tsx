@@ -12,7 +12,7 @@ import { testfallAus } from '../lib/testfall';
 import { ignorierteHaendlerLaden, ignorierteHaendlerSpeichern } from '../db';
 import { Signal } from '../lib/trend';
 import {
-  berechnePreis, euro, Merkmal, MERKMAL_LABEL, PreisErgebnis, PreisRegeln, Zustand, ZUSTAND_LABEL,
+  berechnePreis, euro, Merkmal, MERKMAL_LABEL, PreisErgebnis, PreisRegeln, Zustand, ZUSTAND_BUCH, ZUSTAND_LABEL,
 } from '../lib/preis';
 import { LinkVorlage, vergleichsLink } from '../lib/links';
 import { parseZahl, zahlText } from '../einstellungen';
@@ -345,6 +345,7 @@ export function PreisSheet(p: Props) {
             <Chip key={z} label={ZUSTAND_LABEL[z]} aktiv={zustand === z} farbe={ZUSTAND_FARBE[z]} onPress={() => setZustand(z)} />
           ))}
         </View>
+        <Text style={st.klein}>{ZUSTAND_LABEL[zustand]} = im Antiquariat „{ZUSTAND_BUCH[zustand]}“</Text>
         <Abschnitt titel="Merkmale" icon="diamond-stone" farbe={F.lila} />
         <View style={st.reihe}>
           {MERKMALE.map((m) => (

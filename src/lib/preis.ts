@@ -20,12 +20,22 @@ export type Zweig = 'laden' | 'lager';
 /** Welches Vergleichsangebot als Anker dient */
 export type AnkerStrategie = 'guenstigstes' | 'zweitguenstigstes';
 
+/** Zustände in Sammelkarten-Sprache (wie Cardmarket); intern bleiben die Buch-Stufen. */
 export const ZUSTAND_LABEL: Record<Zustand, string> = {
-  wie_neu: 'Wie neu',
-  sehr_gut: 'Sehr gut',
-  gut: 'Gut',
-  akzeptabel: 'Akzeptabel',
-  maengel: 'Mängel',
+  wie_neu: 'Mint',
+  sehr_gut: 'Near Mint',
+  gut: 'Excellent',
+  akzeptabel: 'Played',
+  maengel: 'Poor',
+};
+
+/** Die klassische Antiquariats-Bezeichnung dazu – für Erklärungen und Export. */
+export const ZUSTAND_BUCH: Record<Zustand, string> = {
+  wie_neu: 'wie neu',
+  sehr_gut: 'sehr gut',
+  gut: 'gut',
+  akzeptabel: 'akzeptabel',
+  maengel: 'mit Mängeln',
 };
 
 export const MERKMAL_LABEL: Record<Merkmal, string> = {

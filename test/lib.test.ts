@@ -64,7 +64,7 @@ test('Rechnung zeigt jeden Posten mit Vorzeichen', () => {
   const regeln = { ...STANDARD_REGELN, merkmale: { ...STANDARD_REGELN.merkmale, signiert: { art: 'euro' as const, wert: 100 } } };
   const r = berechnePreis({ vergleichspreis: 10, zustand: 'gut', merkmale: ['schutzumschlag', 'signiert'] }, regeln)!;
   const t = schrittText(r);
-  assert.ok(t.includes('Zustand Gut − 10 %'), t);
+  assert.ok(t.includes('Zustand Excellent − 10 %'), t);
   assert.ok(t.includes('Schutzumschlag/Top + 10 %'), t);
   assert.ok(t.includes('Signiert/Widmung + 100,00 €'), t);
   // Laden: 10 − 1 − 1 + 1 + 100 = 109 ≥ 15 → Lager (kein Unterbieten): 10 − 1 + 1 + 100 = 110
@@ -407,7 +407,7 @@ test('Lager bevorzugt Angebote im selben Zustand', () => {
   ];
   const r = berechnePreis({ angebote, zustand: 'gut', merkmale: [] })!;
   assert.equal(r.vergleichspreis, 29); // zweitgünstigstes der „gut“-Angebote (27 / 29)
-  assert.ok(schrittText(r).includes('Zustand Gut'));
+  assert.ok(schrittText(r).includes('Zustand Excellent'));
   // Zustand steckt schon im Vergleich → kein zweiter Abschlag; 3 Angebote → +20 % Knappheit
   assert.equal(r.vorschlag, 35);
 });
