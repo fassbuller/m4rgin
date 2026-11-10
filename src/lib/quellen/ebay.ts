@@ -94,24 +94,30 @@ export function ebayQuelle(z: EbayZugang, versandPauschale: number): PreisQuelle
     id: 'ebay',
     aktiv: z.aktiv && !!z.clientId && !!z.clientSecret,
     async suche(a) {
-      const p = new URLSearchParams({ limit: '50', sort: 'price' });
-      if (a.isbn) p.set('gtin', a.isbn);
-      else {
-        p.set('q', [a.autor, a.titel].filter(Boolean).join(' '));
-        p.set('category_ids', '267'); // Bücher – ⚠ Kategorie-ID für EBAY_DE prüfen
+      const frage = async (p: URLSearchParams) => {
+        p.set('limit', '50');
+        p.set('sort', 'price');
+        const res = await fetch(`https://api.ebay.com/buy/browse/v1/item_summary/search?${p}`, {
+          headers: {
+            Authorization: `Bearer ${await appToken(z)}`,
+            'X-EBAY-C-MARKETPLACE-ID': 'EBAY_DE',
+            'X-EBAY-C-ENDUSERCTX': 'contextualLocation=country%3DDE%2Czip%3D12163',
+          },
+        });
+        if (!res.ok) {
+          const grund = await fehlerText(res);
+          throw new Error(`eBay antwortet mit ${res.status}${grund ? `: ${grund}` : ''}`);
+        }
+        return parseEbay(await res.json(), versandPauschale);
+      };
+      if (a.isbn) {
+        // Viele eBay-Angebote haben keine ISBN im Produktfeld (gtin) – die Nummer steht aber im Titel.
+        // Deshalb: erst gtin (genau), bei 0 Treffern die ISBN als Suchbegriff.
+        const genau = await frage(new URLSearchParams({ gtin: a.isbn }));
+        if (genau.length) return genau;
+        return frage(new URLSearchParams({ q: a.isbn }));
       }
-      const res = await fetch(`https://api.ebay.com/buy/browse/v1/item_summary/search?${p}`, {
-        headers: {
-          Authorization: `Bearer ${await appToken(z)}`,
-          'X-EBAY-C-MARKETPLACE-ID': 'EBAY_DE',
-          'X-EBAY-C-ENDUSERCTX': 'contextualLocation=country%3DDE%2Czip%3D12163',
-        },
-      });
-      if (!res.ok) {
-        const grund = await fehlerText(res);
-        throw new Error(`eBay antwortet mit ${res.status}${grund ? `: ${grund}` : ''}`);
-      }
-      return parseEbay(await res.json(), versandPauschale);
+      return frage(new URLSearchParams({ q: [a.autor, a.titel].filter(Boolean).join(' '), category_ids: '267' })); // 267 = Bücher
     },
   };
 }

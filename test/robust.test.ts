@@ -232,3 +232,27 @@ test('eurobuch: doppelt kodierte Titel werden lesbar', () => {
   const xml = `<ResultList><Book title="Das Tor zum Gl&amp;#252;ck &amp;#8211; Inspirationen zur Lebenskunst" author="Kruppa, Hans" price="3.00" currency="EUR" platform="ZVAB" /></ResultList>`;
   assert.equal(parseEurobuch(xml, 3)[0].titel, 'Kruppa, Hans: Das Tor zum Glück – Inspirationen zur Lebenskunst');
 });
+
+test('eBay: ohne gtin-Treffer wird die ISBN als Suchbegriff gesucht', async () => {
+  const { ebayQuelle } = await import('../src/lib/quellen/ebay');
+  const alt = globalThis.fetch;
+  const urls: string[] = [];
+  globalThis.fetch = (async (u: string) => {
+    urls.push(String(u));
+    if (String(u).includes('oauth2/token')) return new Response(JSON.stringify({ access_token: 't', expires_in: 7200 }));
+    const treffer = String(u).includes('q=9783426662182')
+      ? [{ title: 'Das Tor zum Glück von Kruppa, Hans', price: { value: '4.00', currency: 'EUR' }, shippingOptions: [{ shippingCost: { value: '2.00', currency: 'EUR' } }] }]
+      : [];
+    return new Response(JSON.stringify({ itemSummaries: treffer }));
+  }) as typeof fetch;
+  try {
+    const a = await ebayQuelle({ aktiv: true, clientId: 'id-test', clientSecret: 'geheim-test' }, 3).suche({ isbn: '9783426662182' });
+    assert.deepEqual(a.map((x) => x.gesamt), [6]);
+    const suchen = urls.filter((u) => u.includes('item_summary'));
+    assert.equal(suchen.length, 2);
+    assert.ok(suchen[0].includes('gtin=9783426662182'));
+    assert.ok(suchen[1].includes('q=9783426662182'));
+  } finally {
+    globalThis.fetch = alt;
+  }
+});
