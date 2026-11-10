@@ -21,6 +21,9 @@ $tmp = Join-Path (Get-Location) ".tmp"
 New-Item -ItemType Directory -Force $tmp | Out-Null
 $env:TEMP = $tmp
 $env:TMP = $tmp
+# Der Projekt-Fingerabdruck hängt hier gelegentlich minutenlang und wird für Expo Go nicht gebraucht
+# (Laufzeit = SDK-Version, kein eigener nativer Build) – eas schlägt das Überspringen selbst vor.
+$env:EAS_SKIP_AUTO_FINGERPRINT = "1"
 npx --yes eas-cli@latest whoami
 if ($LASTEXITCODE -ne 0) { throw "Anmeldung bei Expo fehlgeschlagen - Token pruefen." }
 
