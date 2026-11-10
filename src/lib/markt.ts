@@ -117,8 +117,12 @@ export interface MarktOptionen {
   wiederholenNachMs?: number;
 }
 
-/** Zugang falsch oder Anfrage kaputt: Ein zweiter Versuch ändert daran nichts. */
-const endgueltig = (fehler: string) => /mit 4\d\d|anmeldung|nicht eingerichtet/i.test(fehler);
+/**
+ * Zugang falsch, Anfrage kaputt oder Quelle zu langsam: Ein zweiter Versuch ändert daran nichts
+ * (eine überlastete Quelle wird beim zweiten Mal nicht schneller – nur die Wartezeit verdoppelt sich).
+ * Wiederholt werden nur schnelle Fehler wie Netzaussetzer oder 5xx.
+ */
+export const endgueltig = (fehler: string) => /mit 4\d\d|anmeldung|nicht eingerichtet|zeitüberschreitung/i.test(fehler);
 
 /**
  * Eine Quelle abfragen – mit einem zweiten Versuch bei Netz- oder Serverfehlern und, bei ISBN-Suche ohne
@@ -204,6 +208,14 @@ export function marktMitAuswahl(m: MarktErgebnis, raus: string[], rein: string[]
     ...vonHand.map((a) => ({ ...a, grund: 'von Hand aussortiert' })),
   ].sort((a, b) => a.gesamt - b.gesamt);
   return { ...m, angebote, aussortiert, lage: marktlage(angebote) };
+}
+
+/**
+ * Haben alle eingeschalteten Quellen geantwortet? Nur dann taugt das Ergebnis für den Verlauf –
+ * sonst sähe ein Ausfall später aus wie „kaum Angebote am Markt“ und verfälschte Trend und Seltenheit.
+ */
+export function vollstaendig(m: MarktErgebnis): boolean {
+  return m.status.length > 0 && m.status.every((s) => s.ok);
 }
 
 export function mitTimeout<T>(p: Promise<T>, ms: number): Promise<T> {

@@ -45,8 +45,14 @@ function attribute(tag: string): Record<string, string> {
   const out: Record<string, string> = {};
   const re = /([A-Za-z_]+)\s*=\s*"([^"]*)"/g;
   let m: RegExpExecArray | null;
-  while ((m = re.exec(tag))) out[m[1].toLowerCase()] = dekodiere(m[2]);
+  while ((m = re.exec(tag))) out[m[1].toLowerCase()] = zweifachDekodiert(m[2]);
   return out;
+}
+
+/** eurobuch kodiert manche Titel doppelt (`&amp;#8211;`) – dann ein zweiter Durchgang, sonst bleibt `&#8211;` stehen. */
+export function zweifachDekodiert(s: string): string {
+  const a = dekodiere(s);
+  return /&(#\d+|#x[0-9a-f]+|amp|lt|gt|quot|apos);/i.test(a) ? dekodiere(a) : a;
 }
 
 const zahl = (s?: string): number | null => {

@@ -4,7 +4,7 @@ import { Titel } from './lib/titel';
 import { dnbIsbn, dnbSuche } from './lib/dnb';
 import { openLibraryIsbn } from './lib/openlibrary';
 import { baueCql, SuchFelder } from './lib/suche';
-import { MarktErgebnis, marktAbfragen, mitTimeout } from './lib/markt';
+import { MarktErgebnis, marktAbfragen, mitTimeout, vollstaendig } from './lib/markt';
 import { eurobuchQuelle, eurobuchUrl, parseEurobuch } from './lib/quellen/eurobuch';
 import { booklookerQuelle, booklookerUrl, parseBooklooker } from './lib/quellen/booklooker';
 import { appToken, ebayQuelle } from './lib/quellen/ebay';
@@ -56,7 +56,8 @@ export async function marktFuer(t: Titel, e: Einstellungen): Promise<MarktErgebn
   const m = await marktAbfragen(quellen, anfrage, {
     pruef: { titel: t.titel, autor: t.autoren[0], bindung: bindungAus(t.einband), ignorierteHaendler },
   });
-  if (m.status.some((s) => s.ok)) await verlaufSpeichern(schluessel(t), m).catch(() => undefined);
+  // Nur vollständige Abfragen in den Verlauf – ein Quellenausfall ist kein „Buch kaum am Markt“
+  if (vollstaendig(m)) await verlaufSpeichern(schluessel(t), m).catch(() => undefined);
   return m;
 }
 

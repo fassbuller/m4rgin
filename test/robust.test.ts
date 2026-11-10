@@ -200,3 +200,35 @@ test('Korrektur-Auswertung findet systematische Abweichungen', () => {
   assert.ok(Math.abs((a.mittel ?? 0) - 0.2) < 1e-9);
   assert.ok(a.auffaellig[0].startsWith('Bei Regal ändert ihr den Preis im Schnitt um +20 %'));
 });
+
+// --- Fehler, die bei Pegel aufgefallen sind ---
+import { vollstaendig } from '../src/lib/markt';
+import { parseEurobuch, zweifachDekodiert } from '../src/lib/quellen/eurobuch';
+
+test('Zeitüberschreitung: kein zweiter Versuch, keine ISBN-10-Nachfrage', async () => {
+  let n = 0;
+  const m = await marktAbfragen(
+    [{ id: 'eurobuch', aktiv: true, suche: () => { n++; return new Promise<Angebot[]>(() => undefined); } }],
+    { isbn: '9783518468807' },
+    { timeoutMs: 20, wiederholenNachMs: 1 },
+  );
+  assert.equal(n, 1);
+  assert.deepEqual(m.status.map((s) => [s.ok, s.versuche, s.fehler]), [[false, 1, 'Zeitüberschreitung']]);
+});
+
+test('Verlauf nur, wenn alle eingeschalteten Quellen geantwortet haben', async () => {
+  const ok = { id: 'booklooker' as const, aktiv: true, suche: async () => [an(9)] };
+  const kaputt = { id: 'eurobuch' as const, aktiv: true, suche: async () => { throw new Error('eurobuch antwortet mit 401'); } };
+  const aus = { id: 'ebay' as const, aktiv: false, suche: async () => { throw new Error('darf nicht gefragt werden'); } };
+  assert.equal(vollstaendig(await marktAbfragen([ok, aus], { isbn: '9783518468807' })), true);
+  assert.equal(vollstaendig(await marktAbfragen([ok, kaputt], { isbn: '9783518468807' })), false);
+  assert.equal(vollstaendig(await marktAbfragen([aus], { isbn: '9783518468807' })), false);
+});
+
+test('eurobuch: doppelt kodierte Titel werden lesbar', () => {
+  assert.equal(zweifachDekodiert('Das Tor zum Glück &amp;#8211; Inspirationen'), 'Das Tor zum Glück – Inspirationen');
+  assert.equal(zweifachDekodiert('Krieg &amp; Frieden'), 'Krieg & Frieden');
+  assert.equal(zweifachDekodiert('Tom &amp;amp; Jerry'), 'Tom & Jerry');
+  const xml = `<ResultList><Book title="Das Tor zum Gl&amp;#252;ck &amp;#8211; Inspirationen zur Lebenskunst" author="Kruppa, Hans" price="3.00" currency="EUR" platform="ZVAB" /></ResultList>`;
+  assert.equal(parseEurobuch(xml, 3)[0].titel, 'Kruppa, Hans: Das Tor zum Glück – Inspirationen zur Lebenskunst');
+});
