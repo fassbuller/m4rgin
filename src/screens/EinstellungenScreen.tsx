@@ -6,6 +6,7 @@ import { Einstellungen, STANDARD_EINSTELLUNGEN, parseZahl, zahlText } from '../e
 import { einstellungenSpeichern, ignorierteHaendlerLaden, ignorierteHaendlerSpeichern, korrekturenLaden, korrekturenLoeschen } from '../db';
 import { Auswertung, werteKorrekturenAus } from '../lib/korrektur';
 import { quellenTesten } from '../dienste';
+import { VERSION_TEXT } from '../version';
 import { Merkmal, MERKMAL_LABEL, ZweigRegeln, Zustand, ZUSTAND_LABEL } from '../lib/preis';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BEREICH, F, hell, RADIUS, ABSTAND, ZUSTAND_FARBE } from '../theme';
@@ -82,6 +83,7 @@ export function EinstellungenScreen({ einst, onGespeichert, onEinfuehrung }: Pro
     <View style={st.wurzel}>
       <Kopf titel="Einstellungen" icon="cog" farbe={BEREICH.einst} />
       <ScrollView contentContainerStyle={{ padding: ABSTAND, paddingBottom: 120 }}>
+        <Text selectable style={[st.klein, { textAlign: 'center', marginBottom: 8 }]}>{VERSION_TEXT}</Text>
         <Abschnitt titel="Preisquellen" icon="store-search" farbe={F.blau}>
           <Schalter label="booklooker" wert={e.booklooker.aktiv} setze={(v) => setE({ ...e, booklooker: { ...e.booklooker, aktiv: v } })} />
           <Feld label="Partner-ID (pid)" wert={e.booklooker.pid} setze={(v) => setE({ ...e, booklooker: { ...e.booklooker, pid: v.trim() } })} />

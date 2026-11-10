@@ -36,6 +36,11 @@ if (-not $projektId) {
 }
 
 if (-not $Nachricht) { $Nachricht = (git log -1 --pretty=%s) }
+# Stand fest ins Bundle schreiben (Einstellungen zeigen ihn oben an): Commit, ggf. „+“ bei ungespeicherten Änderungen, Uhrzeit
+$commit = (git rev-parse --short HEAD)
+if (git status --porcelain --untracked-files=no) { $commit = "$commit+" }
+$env:EXPO_PUBLIC_STAND = "$commit vom $(Get-Date -Format 'dd.MM. HH:mm')"
+Write-Host "Stand: $env:EXPO_PUBLIC_STAND" -ForegroundColor Cyan
 npx --yes eas-cli@latest update --channel $Kanal --environment preview --message "$Nachricht" --platform all --non-interactive
 if ($LASTEXITCODE -ne 0) { throw "eas update fehlgeschlagen." }
 

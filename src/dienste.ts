@@ -7,6 +7,7 @@ import { baueCql, SuchFelder } from './lib/suche';
 import { MarktErgebnis, marktAbfragen, mitTimeout, vollstaendig } from './lib/markt';
 import { eurobuchAbgelehnt, eurobuchQuelle, eurobuchUrl, parseEurobuch } from './lib/quellen/eurobuch';
 import { booklookerQuelle, booklookerUrl, parseBooklooker } from './lib/quellen/booklooker';
+import { VERSION_TEXT } from './version';
 import { appToken, ebayQuelle } from './lib/quellen/ebay';
 import { angebotsSignal, interesseSignal, neuauflageSignal, Signal } from './lib/trend';
 import { berechnePreis, Merkmal, PreisErgebnis, PreisRegeln } from './lib/preis';
@@ -163,8 +164,8 @@ export function seltenheitFuer(
  */
 // Testbuch: „Tschick“ – auf allen Plattformen reichlich vorhanden
 export async function quellenTesten(e: Einstellungen, isbn = '9783499256356'): Promise<string> {
-  const teile: string[] = [];
-  const sek = (t0: number) => `${((Date.now() - t0) / 1000).toFixed(1)} s`;
+  const teile: string[] = [VERSION_TEXT];
+  const sek =(t0: number) => `${((Date.now() - t0) / 1000).toFixed(1)} s`;
   const roh = async (name: string, url: string, parse: (x: string) => number) => {
     const t0 = Date.now();
     try {
