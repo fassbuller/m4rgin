@@ -100,6 +100,18 @@ export function parseEurobuch(xml: string, versandPauschale: number): Angebot[] 
   return angebote;
 }
 
+/**
+ * eurobuch antwortet bei Sperre/Kontingent mit HTTP 200 und Klartext statt XML, z. B. „no service 3-8“
+ * (nicht dokumentiert; tritt auf, wenn zu viele Abfragen vom selben Zugang/derselben IP kamen).
+ * Das ist ein Ausfall, kein „0 Angebote“ – sonst hielte die App das Buch für knapp.
+ */
+export function eurobuchAbgelehnt(text: string): string | null {
+  if (/<ResultList\b|<Book\b/i.test(text)) return null;
+  const t = text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  if (/no service|not allowed|access denied|kein zugriff|error/i.test(t)) return t.slice(0, 80);
+  return null;
+}
+
 export function eurobuchQuelle(z: EurobuchZugang, versandPauschale: number): PreisQuelle {
   return {
     id: 'eurobuch',
@@ -107,7 +119,10 @@ export function eurobuchQuelle(z: EurobuchZugang, versandPauschale: number): Pre
     async suche(anfrage) {
       const res = await fetch(eurobuchUrl(z, anfrage));
       if (!res.ok) throw new Error(`eurobuch antwortet mit ${res.status}`);
-      return parseEurobuch(await res.text(), versandPauschale);
+      const text = await res.text();
+      const abgelehnt = eurobuchAbgelehnt(text);
+      if (abgelehnt) throw new Error(`eurobuch verweigert die Abfrage („${abgelehnt}“)`);
+      return parseEurobuch(text, versandPauschale);
     },
   };
 }

@@ -5,7 +5,7 @@ import { dnbIsbn, dnbSuche } from './lib/dnb';
 import { openLibraryIsbn } from './lib/openlibrary';
 import { baueCql, SuchFelder } from './lib/suche';
 import { MarktErgebnis, marktAbfragen, mitTimeout, vollstaendig } from './lib/markt';
-import { eurobuchQuelle, eurobuchUrl, parseEurobuch } from './lib/quellen/eurobuch';
+import { eurobuchAbgelehnt, eurobuchQuelle, eurobuchUrl, parseEurobuch } from './lib/quellen/eurobuch';
 import { booklookerQuelle, booklookerUrl, parseBooklooker } from './lib/quellen/booklooker';
 import { appToken, ebayQuelle } from './lib/quellen/ebay';
 import { angebotsSignal, interesseSignal, neuauflageSignal, Signal } from './lib/trend';
@@ -180,6 +180,16 @@ export async function quellenTesten(e: Einstellungen, isbn = '9783499256356'): P
   } else teile.push('■ booklooker: keine Partner-ID eingetragen');
   if (e.eurobuch.benutzer) {
     await roh('eurobuch', eurobuchUrl(e.eurobuch, { isbn }), (x) => parseEurobuch(x, 0).length);
+    const letzte = teile[teile.length - 1];
+    const grund = eurobuchAbgelehnt(letzte.split('\n').slice(1).join('\n'));
+    if (grund) {
+      teile.push(
+        `  → eurobuch sperrt gerade („${grund}“): Kontingent für diesen Zugang/diese IP aufgebraucht.` +
+          (e.eurobuch.benutzer === 'test'
+            ? ' Der Testzugang „test“ teilen sich alle Nutzer – echten Partnerzugang bei eurobuch beantragen.'
+            : ' Meist ist es nach einigen Stunden wieder frei.'),
+      );
+    }
   } else teile.push('■ eurobuch: kein Zugang eingetragen');
   if (e.ebay.clientId) {
     // In zwei Schritten, damit man sieht, ob die Anmeldung oder die Suche hängt

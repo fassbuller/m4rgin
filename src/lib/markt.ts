@@ -122,7 +122,7 @@ export interface MarktOptionen {
  * (eine überlastete Quelle wird beim zweiten Mal nicht schneller – nur die Wartezeit verdoppelt sich).
  * Wiederholt werden nur schnelle Fehler wie Netzaussetzer oder 5xx.
  */
-export const endgueltig = (fehler: string) => /mit 4\d\d|anmeldung|nicht eingerichtet|zeitüberschreitung/i.test(fehler);
+export const endgueltig = (fehler: string) => /mit 4\d\d|anmeldung|nicht eingerichtet|zeitüberschreitung|verweigert/i.test(fehler);
 
 /**
  * Eine Quelle abfragen – mit einem zweiten Versuch bei Netz- oder Serverfehlern und, bei ISBN-Suche ohne
