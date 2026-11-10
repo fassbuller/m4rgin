@@ -260,6 +260,8 @@ test('eBay: ohne gtin-Treffer wird die ISBN als Suchbegriff gesucht', async () =
 test('eurobuch: „no service“ ist ein Ausfall, kein „0 Angebote“', async () => {
   const { eurobuchAbgelehnt, eurobuchQuelle } = await import('../src/lib/quellen/eurobuch');
   assert.equal(eurobuchAbgelehnt('no service 3-8'), 'no service 3-8');
+  assert.equal(eurobuchAbgelehnt('<?xml version="1.0"?><Error>No Service 3-8</Error>'), 'No Service 3-8');
+  assert.equal(eurobuchAbgelehnt('<Error>Wartung</Error>'), 'Wartung');
   assert.equal(eurobuchAbgelehnt('<?xml version="1.0"?><ResultList id="1"></ResultList>'), null);
   const alt = globalThis.fetch;
   globalThis.fetch = (async () => new Response('no service 3-8')) as typeof fetch;

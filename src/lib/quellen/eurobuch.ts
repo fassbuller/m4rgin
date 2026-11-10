@@ -106,6 +106,9 @@ export function parseEurobuch(xml: string, versandPauschale: number): Angebot[] 
  * Das ist ein Ausfall, kein „0 Angebote“ – sonst hielte die App das Buch für knapp.
  */
 export function eurobuchAbgelehnt(text: string): string | null {
+  // Jede <Error>-Meldung ist eine Sperre/Störung, egal mit welchem Text
+  const fehler = text.match(/<Error>([\s\S]*?)<\/Error>/i)?.[1]?.trim();
+  if (fehler) return dekodiere(fehler).slice(0, 80);
   if (/<ResultList\b|<Book\b/i.test(text)) return null;
   const t = text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
   if (/no service|not allowed|access denied|kein zugriff|error/i.test(t)) return t.slice(0, 80);
