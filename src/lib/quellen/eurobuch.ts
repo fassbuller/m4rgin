@@ -19,6 +19,12 @@ export interface EurobuchZugang {
 
 const BASIS = 'https://www.eurobuch.at/extreq/meta/extquery.php';
 
+/**
+ * clientip: eurobuch zählt die Abfragen pro Client-IP (Schutz vor Lawinen-Anfragen). m4rgin fragt direkt
+ * vom Handy, daher „-“ = die IP des Abfragenden ist die des Endnutzers – jedes Handy hat sein eigenes
+ * Kontingent. Liefe die Abfrage je über einen eigenen Server, müsste dort die echte Endnutzer-IP rein.
+ * Mit ISBN wird nur die Nummer gesucht, nie zusätzlich der Titel (jede Abfrage zählt).
+ */
 export function eurobuchUrl(
   z: EurobuchZugang,
   a: { isbn?: string; titel?: string; autor?: string },
@@ -119,6 +125,8 @@ export function eurobuchQuelle(z: EurobuchZugang, versandPauschale: number): Pre
   return {
     id: 'eurobuch',
     aktiv: z.aktiv && !!z.benutzer && !!z.passwort,
+    // eurobuch hat ein knappes Kontingent pro Zugang/IP und ordnet ISBN-10/13 selbst zu
+    isbn10Nachfrage: false,
     async suche(anfrage) {
       const res = await fetch(eurobuchUrl(z, anfrage));
       if (!res.ok) throw new Error(`eurobuch antwortet mit ${res.status}`);

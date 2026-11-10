@@ -310,3 +310,27 @@ test('eBay: zuletzt per Titel, nur passende Titel', async () => {
     globalThis.fetch = alt;
   }
 });
+
+test('eurobuch spart Kontingent: keine ISBN-10-Nachfrage, mit ISBN nie zusätzlich Titel, clientip „-“', async () => {
+  const { eurobuchQuelle, eurobuchUrl } = await import('../src/lib/quellen/eurobuch');
+  const alt = globalThis.fetch;
+  const urls: string[] = [];
+  globalThis.fetch = (async (u: string) => {
+    urls.push(String(u));
+    return new Response('<?xml version="1.0"?><ResultList id="1"></ResultList>');
+  }) as typeof fetch;
+  try {
+    const m = await marktAbfragen(
+      [eurobuchQuelle({ aktiv: true, benutzer: 'x', passwort: 'y' }, 3)],
+      { isbn: '9783518468807', titel: 'Venedig', autor: 'Nooteboom' },
+    );
+    assert.equal(m.status[0].ok, true);
+    assert.equal(urls.length, 1);
+    assert.ok(urls[0].includes('isbn=9783518468807'));
+    assert.ok(!urls[0].includes('title='));
+    assert.ok(urls[0].includes('clientip=-'));
+  } finally {
+    globalThis.fetch = alt;
+  }
+  assert.ok(eurobuchUrl({ aktiv: true, benutzer: 'x', passwort: 'y' }, { titel: 'Venedig' }).includes('title=Venedig'));
+});

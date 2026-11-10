@@ -102,6 +102,11 @@ export function ankerAngebot(angebote: Angebot[]): { anker: Angebot | null; ausr
 export interface PreisQuelle {
   id: QuellenId;
   aktiv: boolean;
+  /**
+   * Bei 0 Treffern noch einmal mit der ISBN-10 fragen? (Standard: ja.) Aus bei Quellen mit knappem
+   * Kontingent, die die ISBN-10 ohnehin selbst zuordnen – jede Nachfrage zählt dort mit.
+   */
+  isbn10Nachfrage?: boolean;
   suche(anfrage: { isbn?: string; titel?: string; autor?: string }): Promise<Angebot[]>;
 }
 
@@ -162,7 +167,7 @@ async function frageQuelle(
       angebote = await einmal();
     }
     const isbn10 = anfrage.isbn ? isbn13zu10(anfrage.isbn) : null;
-    if (angebote.length === 0 && isbn10) {
+    if (angebote.length === 0 && isbn10 && q.isbn10Nachfrage !== false) {
       angebote = await mitTimeout(q.suche({ isbn: isbn10 }), timeoutMs).catch(() => []);
     }
     return { angebote, status: { quelle: q.id, ok: true, anzahl: angebote.length, ms: Date.now() - start, versuche } };
