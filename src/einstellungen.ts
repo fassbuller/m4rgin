@@ -33,7 +33,8 @@ export const STANDARD_EINSTELLUNGEN: Einstellungen = {
   // Testzugang laut eurobuch-Doku – liefert echte Daten, aber ohne Provision; echten Zugang beantragen
   // Kein fest eingebauter Testzugang mehr (der wird gedrosselt) – echten Partnerzugang eintragen
   eurobuch: { aktiv: true, benutzer: '', passwort: '' },
-  ebay: { aktiv: false, clientId: '', clientSecret: '' },
+  // An, sobald Zugangsdaten da sind (ohne Client-ID/Secret bleibt die Quelle ohnehin stumm)
+  ebay: { aktiv: true, clientId: '', clientSecret: '' },
   versandPauschale: 3,
   trendAktiv: true,
   schnellmodus: true,

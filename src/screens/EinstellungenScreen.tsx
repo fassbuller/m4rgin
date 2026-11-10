@@ -95,6 +95,9 @@ export function EinstellungenScreen({ einst, onGespeichert, onEinfuehrung }: Pro
           {!e.eurobuch.benutzer && <Text style={st.klein}>Ohne Zugang ist eurobuch aus. Passwörter liegen im sicheren Speicher des Geräts.</Text>}
           <Feld label="Passwort" wert={e.eurobuch.passwort} geheim setze={(v) => setE({ ...e, eurobuch: { ...e.eurobuch, passwort: v } })} />
           <Schalter label="eBay" wert={e.ebay.aktiv} setze={(v) => setE({ ...e, ebay: { ...e.ebay, aktiv: v } })} />
+          {!e.ebay.aktiv && !!e.ebay.clientId && (
+            <Text style={[st.klein, { color: F.rot }]}>eBay ist ausgeschaltet – beim Scannen wird eBay nicht gefragt.</Text>
+          )}
           <Feld label="Client-ID" wert={e.ebay.clientId} setze={(v) => setE({ ...e, ebay: { ...e.ebay, clientId: v.trim() } })} />
           <Feld label="Client-Secret" wert={e.ebay.clientSecret} geheim setze={(v) => setE({ ...e, ebay: { ...e.ebay, clientSecret: v.trim() } })} />
           <Feld label="Google-Books-Schlüssel (Cover, optional)" wert={e.googleBooksKey} geheim setze={(v) => setE({ ...e, googleBooksKey: v.trim() })} />

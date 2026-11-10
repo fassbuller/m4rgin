@@ -5,6 +5,7 @@
 // ⚠ Sicherheit: Das Secret liegt im Prototyp auf dem Handy. Später in einen Dienst im Laden verlagern.
 
 import { Angebot, PreisQuelle, runde2 } from '../markt';
+import { titelPasst } from '../pruefung';
 
 export interface EbayZugang {
   aktiv: boolean;
@@ -110,14 +111,19 @@ export function ebayQuelle(z: EbayZugang, versandPauschale: number): PreisQuelle
         }
         return parseEbay(await res.json(), versandPauschale);
       };
+      const perTitel = () =>
+        frage(new URLSearchParams({ q: [a.autor, a.titel].filter(Boolean).join(' '), category_ids: '267' })); // 267 = Bücher
       if (a.isbn) {
         // Viele eBay-Angebote haben keine ISBN im Produktfeld (gtin) – die Nummer steht aber im Titel.
-        // Deshalb: erst gtin (genau), bei 0 Treffern die ISBN als Suchbegriff.
+        // Deshalb: erst gtin (genau), bei 0 Treffern die ISBN als Suchbegriff …
         const genau = await frage(new URLSearchParams({ gtin: a.isbn }));
         if (genau.length) return genau;
-        return frage(new URLSearchParams({ q: a.isbn }));
+        const nummer = await frage(new URLSearchParams({ q: a.isbn }));
+        if (nummer.length || !a.titel) return nummer;
+        // … und zuletzt Titel + Autor. Da kommen auch fremde Bücher mit – nur passende Titel behalten.
+        return (await perTitel()).filter((x) => titelPasst(x.titel ?? '', a.titel!, a.autor));
       }
-      return frage(new URLSearchParams({ q: [a.autor, a.titel].filter(Boolean).join(' '), category_ids: '267' })); // 267 = Bücher
+      return perTitel();
     },
   };
 }

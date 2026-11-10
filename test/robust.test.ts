@@ -275,3 +275,38 @@ test('eurobuch: „no service“ ist ein Ausfall, kein „0 Angebote“', async 
     globalThis.fetch = alt;
   }
 });
+
+test('Quellen-Status: kurze Fehler und ausgeschaltete Quellen', async () => {
+  const { kurzerFehler } = await import('../src/lib/markt');
+  assert.equal(kurzerFehler('eurobuch verweigert die Abfrage („No Service 3-8“)'), 'gesperrt');
+  assert.equal(kurzerFehler('Zeitüberschreitung'), 'antwortet nicht');
+  assert.equal(kurzerFehler('eBay-Anmeldung fehlgeschlagen (401: invalid_client)'), 'Zugang falsch');
+  const m = await marktAbfragen(
+    [{ id: 'booklooker', aktiv: true, suche: async () => [an(9)] }, { id: 'ebay', aktiv: false, suche: async () => [] }],
+    { isbn: '9783518468807' },
+  );
+  assert.deepEqual(m.aus, ['ebay']);
+});
+
+test('eBay: zuletzt per Titel, nur passende Titel', async () => {
+  const { ebayQuelle } = await import('../src/lib/quellen/ebay');
+  const alt = globalThis.fetch;
+  const urls: string[] = [];
+  const item = (title: string, value: string) => ({ title, price: { value, currency: 'EUR' }, shippingOptions: [{ shippingCost: { value: '2.00', currency: 'EUR' } }] });
+  globalThis.fetch = (async (u: string) => {
+    urls.push(String(u));
+    if (String(u).includes('oauth2/token')) return new Response(JSON.stringify({ access_token: 't', expires_in: 7200 }));
+    const treffer = String(u).includes('category_ids=267')
+      ? [item('Das Tor zum Glück: Inspirationen zur Lebenskunst – Hans Kruppa', '3.00'), item('Kruppa: Glücksmomente', '1.00')]
+      : [];
+    return new Response(JSON.stringify({ itemSummaries: treffer }));
+  }) as typeof fetch;
+  try {
+    const a = await ebayQuelle({ aktiv: true, clientId: 'id-titel', clientSecret: 'geheim-titel' }, 3)
+      .suche({ isbn: '9783426662182', titel: 'Das Tor zum Glück', autor: 'Kruppa' });
+    assert.deepEqual(a.map((x) => x.gesamt), [5]);
+    assert.equal(urls.filter((u) => u.includes('item_summary')).length, 3);
+  } finally {
+    globalThis.fetch = alt;
+  }
+});

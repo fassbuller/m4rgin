@@ -5,7 +5,7 @@ import { Text } from './Schrift';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Titel, titelZeile2 } from '../lib/titel';
-import { Angebot, MarktErgebnis, marktMitAuswahl, QUELLEN_NAME } from '../lib/markt';
+import { Angebot, kurzerFehler, MarktErgebnis, marktMitAuswahl, QUELLEN_NAME } from '../lib/markt';
 import { angebotSchluessel } from '../lib/pruefung';
 import { AMPEL_LABEL, bewerteKonfidenz, Konfidenz } from '../lib/konfidenz';
 import { testfallAus } from '../lib/testfall';
@@ -202,12 +202,23 @@ export function PreisSheet(p: Props) {
         <View style={st.statusReihe}>
           {p.marktLaedt && <Text style={st.klein}>Frage Preisquellen ab …</Text>}
           {markt?.status.map((s) => (
-            <View key={s.quelle} style={st.statusTeil}>
+            <Pressable
+              key={s.quelle}
+              style={st.statusTeil}
+              disabled={s.ok}
+              onPress={() => Alert.alert(`${QUELLEN_NAME[s.quelle]}: ${kurzerFehler(s.fehler)}`, s.fehler ?? '')}
+            >
               <Icon name={s.ok ? 'check-circle' : 'close-circle'} size={16} farbe={s.ok ? F.gruen : F.rot} />
               <Text style={[st.status, { color: s.ok ? F.gruen : F.rot }]}>
-                {QUELLEN_NAME[s.quelle]} {s.ok ? s.anzahl : s.fehler}
+                {QUELLEN_NAME[s.quelle]} {s.ok ? s.anzahl : kurzerFehler(s.fehler)}
                 {s.versuche === 2 ? ' (2. Versuch)' : ''}
               </Text>
+            </Pressable>
+          ))}
+          {markt?.aus?.map((q) => (
+            <View key={q} style={st.statusTeil}>
+              <Icon name="minus-circle-outline" size={16} farbe={F.grau} />
+              <Text style={[st.status, { color: F.grau }]}>{QUELLEN_NAME[q]} aus</Text>
             </View>
           ))}
           {markt && markt.status.length === 0 && (

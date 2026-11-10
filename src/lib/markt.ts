@@ -57,8 +57,21 @@ export interface MarktErgebnis {
   /** Per ISBN gesucht (zuverlässig) statt per Titel */
   ueberIsbn?: boolean;
   status: QuellenStatus[];
+  /** Quellen, die gar nicht gefragt wurden (ausgeschaltet oder ohne Zugang) */
+  aus?: QuellenId[];
   lage: Marktlage;
   zeit: string;
+}
+
+/** Fehlertext einer Quelle in zwei, drei Wörtern – der volle Text steht im Quellen-Test bzw. beim Antippen. */
+export function kurzerFehler(fehler?: string): string {
+  const f = fehler ?? '';
+  if (/verweigert|no service|gesperrt/i.test(f)) return 'gesperrt';
+  if (/zeitüberschreitung/i.test(f)) return 'antwortet nicht';
+  if (/anmeldung|mit 401|mit 403/i.test(f)) return 'Zugang falsch';
+  if (/network|netz/i.test(f)) return 'kein Netz';
+  if (/mit 5\d\d/.test(f)) return 'Störung';
+  return 'Fehler';
 }
 
 export function median(werte: number[]): number | null {
@@ -184,6 +197,7 @@ export async function marktAbfragen(
     hinweise: p.hinweise,
     ueberIsbn,
     status: ergebnisse.map((e) => e.status),
+    aus: quellen.filter((q) => !q.aktiv).map((q) => q.id),
     lage: marktlage(angebote),
     zeit: new Date().toISOString(),
   };

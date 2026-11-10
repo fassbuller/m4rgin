@@ -52,7 +52,12 @@ export async function marktFuer(t: Titel, e: Einstellungen): Promise<MarktErgebn
     eurobuchQuelle(e.eurobuch, e.versandPauschale),
     ebayQuelle(e.ebay, e.versandPauschale),
   ];
-  const anfrage = t.isbn ? { isbn: t.isbn } : { titel: t.titel, autor: nachname(t) };
+  // Mit ISBN fragen booklooker/eurobuch nur die Nummer; Titel und Autor reisen mit, damit eBay
+  // bei 0 Treffern noch per Titel suchen kann. Ohne erkannten Titel („ISBN 978…“) nicht.
+  const titelBekannt = t.quelle !== 'manuell' || !/^ISBN /.test(t.titel);
+  const anfrage = t.isbn
+    ? { isbn: t.isbn, ...(titelBekannt ? { titel: t.titel, autor: nachname(t) } : {}) }
+    : { titel: t.titel, autor: nachname(t) };
   const ignorierteHaendler = await ignorierteHaendlerLaden().catch(() => []);
   const m = await marktAbfragen(quellen, anfrage, {
     pruef: { titel: t.titel, autor: t.autoren[0], bindung: bindungAus(t.einband), ignorierteHaendler },
@@ -166,32 +171,30 @@ export function seltenheitFuer(
 export async function quellenTesten(e: Einstellungen, isbn = '9783499256356'): Promise<string> {
   const teile: string[] = [VERSION_TEXT];
   const sek =(t0: number) => `${((Date.now() - t0) / 1000).toFixed(1)} s`;
-  const roh = async (name: string, url: string, parse: (x: string) => number) => {
+  // Ausgeschaltete Quellen werden beim Scannen gar nicht gefragt – das muss der Test deutlich sagen
+  const aus = (an: boolean) => (an ? '' : '\n  ⚠ In der App ausgeschaltet – beim Scannen wird diese Quelle nicht gefragt (Schalter oben einschalten).');
+  const roh = async (name: string, url: string, parse: (x: string) => number, an: boolean, gesperrt?: (x: string) => string | null) => {
     const t0 = Date.now();
     try {
       const res = await mitTimeout(fetch(url), 15000);
       const text = await mitTimeout(res.text(), 15000);
-      teile.push(`■ ${name}: HTTP ${res.status}, ${parse(text)} Angebote erkannt (${sek(t0)})\n${text.slice(0, 1500)}`);
+      const sperre = gesperrt?.(text);
+      if (sperre) {
+        teile.push(`■ ${name}: gesperrt („${sperre}“) – meist nach einigen Stunden wieder frei${aus(an)}`);
+        return;
+      }
+      teile.push(`■ ${name}: HTTP ${res.status}, ${parse(text)} Angebote erkannt (${sek(t0)})${aus(an)}\n${text.slice(0, 1500)}`);
     } catch (err) {
-      teile.push(`■ ${name}: Fehler nach ${sek(t0)}: ${String(err)}`);
+      teile.push(`■ ${name}: Fehler nach ${sek(t0)}: ${String(err)}${aus(an)}`);
     }
   };
   if (e.booklooker.pid) {
-    await roh('booklooker', booklookerUrl(e.booklooker, { isbn }), (x) => parseBooklooker(x, 0).length);
+    await roh('booklooker', booklookerUrl(e.booklooker, { isbn }), (x) => parseBooklooker(x, 0).length, e.booklooker.aktiv);
   } else teile.push('■ booklooker: keine Partner-ID eingetragen');
   if (e.eurobuch.benutzer) {
-    await roh('eurobuch', eurobuchUrl(e.eurobuch, { isbn }), (x) => parseEurobuch(x, 0).length);
-    const letzte = teile[teile.length - 1];
-    const grund = eurobuchAbgelehnt(letzte.split('\n').slice(1).join('\n'));
-    if (grund) {
-      teile.push(
-        `  → eurobuch sperrt gerade („${grund}“): Kontingent für diesen Zugang/diese IP aufgebraucht.` +
-          (e.eurobuch.benutzer === 'test'
-            ? ' Der Testzugang „test“ teilen sich alle Nutzer – echten Partnerzugang bei eurobuch beantragen.'
-            : ' Meist ist es nach einigen Stunden wieder frei.'),
-      );
-    }
+    await roh('eurobuch', eurobuchUrl(e.eurobuch, { isbn }), (x) => parseEurobuch(x, 0).length, e.eurobuch.aktiv, eurobuchAbgelehnt);
   } else teile.push('■ eurobuch: kein Zugang eingetragen');
+  if (e.ebay.clientId && !e.ebay.aktiv) teile.push(`■ eBay:${aus(false).replace('\n  ', ' ')}`);
   if (e.ebay.clientId) {
     // In zwei Schritten, damit man sieht, ob die Anmeldung oder die Suche hängt
     let t0 = Date.now();
