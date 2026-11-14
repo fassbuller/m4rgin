@@ -8,6 +8,8 @@ import { kurzerFehler, MarktErgebnis, marktAbfragen, mitTimeout, vollstaendig } 
 import { eurobuchAbgelehnt, eurobuchQuelle, eurobuchUrl, parseEurobuch } from './lib/quellen/eurobuch';
 import { booklookerQuelle, booklookerRoh, booklookerToken, parseBooklookerAntwort } from './lib/quellen/booklooker';
 import { VERSION_TEXT } from './version';
+import { erschliessung } from './lib/erschliessung';
+import { LADENPLAN, standort, Standort } from './lib/ladenplan';
 import { appToken, ebayQuelle } from './lib/quellen/ebay';
 import { angebotsSignal, interesseSignal, neuauflageSignal, Signal } from './lib/trend';
 import { berechnePreis, Merkmal, PreisErgebnis, PreisRegeln } from './lib/preis';
@@ -43,6 +45,17 @@ export async function sucheFelder(f: SuchFelder): Promise<{ cql: string | null; 
   if (!cql) return { cql, treffer: [], gesamt: 0 };
   const { titel, gesamt } = await dnbSuche(cql, 30);
   return { cql, gesamt, treffer: titel };
+}
+
+/**
+ * Wo steht das Buch im Laden vermutlich? DNB-Sacherschließung (MARC21) → Ladenplan.
+ * Ohne ISBN/DNB-Nummer oder ohne DNB-Treffer: null (dann zeigt die App nichts statt zu raten).
+ */
+export async function standortFuer(t: Titel): Promise<Standort | null> {
+  if (!t.isbn && !(t.quelle === 'dnb' && t.id)) return null;
+  const e = await erschliessung({ isbn: t.isbn, idn: t.quelle === 'dnb' ? t.id : undefined });
+  if (!e.gefunden) return null;
+  return standort(LADENPLAN, e);
 }
 
 /** Alle Preisquellen parallel, Kennzahlen in den Verlauf. */

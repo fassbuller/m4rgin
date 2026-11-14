@@ -9,6 +9,7 @@ import { Kategorie, Merkmal, Zustand } from './lib/preis';
 import { zuCsv } from './lib/csv';
 import { Angebot, MarktErgebnis } from './lib/markt';
 import { Snapshot } from './lib/trend';
+import type { Standort } from './lib/ladenplan';
 import { Korrektur } from './lib/korrektur';
 import { Einstellungen, mitStandards } from './einstellungen';
 import { geheimnisseSpeichern, mitGeheimnissen, ohneGeheimnisse } from './geheim';
@@ -56,6 +57,9 @@ export interface LogEintrag {
   dauer_ms: number | null;
   sachgruppen: string | null;
   markt_anzahl: number | null;
+  /** Ladenplan: Raum-ID (z. B. „wintergarten“) und Abteilung (z. B. „Lyrik“) – nur wenn nicht geraten */
+  standort_raum?: string | null;
+  standort_abteilung?: string | null;
   markt_min: number | null;
   markt_median: number | null;
   anker_plattform: string | null;
@@ -146,6 +150,10 @@ async function migriereStapel(d: SQLite.SQLiteDatabase) {
   if (!spalten.some((s) => s.name === 'stapel_id')) {
     await d.execAsync('ALTER TABLE log ADD COLUMN stapel_id INTEGER');
   }
+  // Ladenplan (Raum + Abteilung)
+  if (!spalten.some((s) => s.name === 'standort_raum')) {
+    await d.execAsync('ALTER TABLE log ADD COLUMN standort_raum TEXT; ALTER TABLE log ADD COLUMN standort_abteilung TEXT;');
+  }
   const vorhanden = await d.getFirstAsync<{ n: number }>('SELECT COUNT(*) AS n FROM stapel');
   if ((vorhanden?.n ?? 0) > 0) return;
   const alt = await d.getFirstAsync<{ n: number }>('SELECT COUNT(*) AS n FROM log WHERE stapel = 1');
@@ -189,6 +197,7 @@ export async function logAuspreisen(
     markt: MarktErgebnis | null;
     anker: Angebot | null;
     trend: string | null;
+    standort?: Standort | null;
   },
 ) {
   const d = await db();
@@ -231,6 +240,15 @@ export async function logAuspreisen(
     p.trend,
     id,
   );
+  // Ladenplan: wo das Buch vermutlich hingehört (nur wenn sicher genug, „geraten“ bleibt leer)
+  if (p.standort && !p.standort.geraten) {
+    await d.runAsync(
+      'UPDATE log SET standort_raum=?, standort_abteilung=? WHERE id=?',
+      p.standort.vorschlag.raum,
+      p.standort.vorschlag.name,
+      id,
+    );
+  }
 }
 
 // ---------- Marktverlauf ----------
@@ -528,6 +546,7 @@ const KOPF: (keyof LogEintrag)[] = [
   'verlag', 'jahr', 'neupreis', 'vergleichspreis', 'anzahl_angebote', 'zustand', 'merkmale',
   'vorschlag', 'endpreis', 'kategorie', 'aktion', 'stapel_name', 'dauer_ms', 'sachgruppen', 'markt_anzahl',
   'markt_min', 'markt_median', 'anker_plattform', 'anker_haendler', 'anker_url', 'trend', 'markt_json',
+  'standort_raum', 'standort_abteilung',
 ];
 
 export async function exportCsv(nurStapel = false) {

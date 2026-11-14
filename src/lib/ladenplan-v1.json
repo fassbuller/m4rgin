@@ -1,0 +1,1024 @@
+{
+  "schema": "hennwack-ladenplan",
+  "version": 1,
+  "stand": "2026-11-14",
+  "hinweis": "Räume und Abteilungen von Hennwack mit Regeln, nach denen die Kasse aus DNB-Daten vorschlägt, wo ein Buch stehen könnte. Regalgenau erst ab v2.",
+  "raeume": [
+    {
+      "id": "vorne",
+      "name": "Vorderraum",
+      "farbe": "#3c894e",
+      "reihenfolge": 1,
+      "punkte": [
+        [
+          760,
+          868
+        ],
+        [
+          1383,
+          868
+        ],
+        [
+          1383,
+          1077
+        ],
+        [
+          760,
+          1077
+        ]
+      ]
+    },
+    {
+      "id": "durchgang",
+      "name": "Durchgang",
+      "farbe": "#eecb33",
+      "reihenfolge": 2,
+      "punkte": [
+        [
+          1207,
+          523
+        ],
+        [
+          1383,
+          523
+        ],
+        [
+          1383,
+          868
+        ],
+        [
+          1207,
+          868
+        ]
+      ]
+    },
+    {
+      "id": "mittelraum",
+      "name": "Mittelraum",
+      "farbe": "#e86435",
+      "reihenfolge": 3,
+      "punkte": [
+        [
+          993,
+          132
+        ],
+        [
+          1383,
+          132
+        ],
+        [
+          1383,
+          523
+        ],
+        [
+          993,
+          523
+        ]
+      ]
+    },
+    {
+      "id": "flur",
+      "name": "Flur",
+      "farbe": "#2f6db5",
+      "reihenfolge": 4,
+      "punkte": [
+        [
+          898,
+          132
+        ],
+        [
+          993,
+          132
+        ],
+        [
+          993,
+          523
+        ],
+        [
+          898,
+          523
+        ]
+      ]
+    },
+    {
+      "id": "wintergarten",
+      "name": "Wintergarten",
+      "farbe": "#7a226f",
+      "reihenfolge": 5,
+      "punkte": [
+        [
+          612,
+          335
+        ],
+        [
+          898,
+          335
+        ],
+        [
+          898,
+          523
+        ],
+        [
+          612,
+          523
+        ]
+      ]
+    },
+    {
+      "id": "werkstatt",
+      "name": "Werkstatt",
+      "farbe": "#dd2a4b",
+      "reihenfolge": 6,
+      "punkte": [
+        [
+          632,
+          145
+        ],
+        [
+          745,
+          145
+        ],
+        [
+          765,
+          165
+        ],
+        [
+          765,
+          335
+        ],
+        [
+          612,
+          335
+        ],
+        [
+          612,
+          165
+        ]
+      ]
+    }
+  ],
+  "abteilungen": [
+    {
+      "id": "neue-buecher",
+      "name": "Neue Bücher",
+      "raum": "vorne",
+      "prioritaet": 100,
+      "wenn": [
+        {
+          "status": [
+            "neu"
+          ]
+        },
+        {
+          "erschienen_monate": [
+            "12"
+          ]
+        }
+      ],
+      "hinweis": "Alle Neuware steht vorne, egal welches Thema. Dazu jeder Titel, der laut DNB vor höchstens 12 Monaten erschienen ist (vom heutigen Tag zurückgerechnet); die Fachabteilung erscheint dann als Alternative."
+    },
+    {
+      "id": "kunst",
+      "name": "Kunst",
+      "raum": "vorne",
+      "prioritaet": 50,
+      "wenn": [
+        {
+          "dnb": [
+            "700",
+            "730",
+            "740",
+            "750",
+            "760"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "judaica",
+      "name": "Judaica",
+      "raum": "vorne",
+      "prioritaet": 70,
+      "wenn": [
+        {
+          "schlagwort": [
+            "Judentum",
+            "Juden",
+            "Jüdin",
+            "Jüdisch",
+            "Judaica",
+            "Jiddisch",
+            "Talmud",
+            "Tora",
+            "Kabbala",
+            "Zionismus"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "antisemitismus",
+      "name": "Antisemitismus",
+      "raum": "vorne",
+      "prioritaet": 70,
+      "wenn": [
+        {
+          "schlagwort": [
+            "Antisemitismus",
+            "Judenfeindschaft",
+            "Antijudaismus"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "kinderbuecher",
+      "name": "Kinderbücher, Leseanfänger:innen, Märchen und Sagen",
+      "raum": "vorne",
+      "prioritaet": 60,
+      "wenn": [
+        {
+          "dnb": [
+            "K"
+          ]
+        },
+        {
+          "schlagwort": [
+            "Märchen",
+            "Sage",
+            "Bilderbuch",
+            "Erstlesebuch",
+            "Kinderbuch"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "politik",
+      "name": "Politik",
+      "raum": "durchgang",
+      "prioritaet": 50,
+      "wenn": [
+        {
+          "dnb": [
+            "320"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "philosophie",
+      "name": "Philosophie",
+      "raum": "durchgang",
+      "prioritaet": 50,
+      "wenn": [
+        {
+          "dnb": [
+            "100"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "literaturwissenschaft",
+      "name": "Literaturwissenschaft",
+      "raum": "durchgang",
+      "prioritaet": 50,
+      "wenn": [
+        {
+          "dnb": [
+            "800",
+            "810",
+            "820",
+            "830",
+            "839",
+            "840",
+            "850",
+            "860",
+            "870",
+            "880",
+            "890",
+            "891.8"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "soziologie",
+      "name": "Soziologie",
+      "raum": "durchgang",
+      "prioritaet": 50,
+      "wenn": [
+        {
+          "dnb": [
+            "300"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "linguistik",
+      "name": "Linguistik",
+      "raum": "durchgang",
+      "prioritaet": 50,
+      "wenn": [
+        {
+          "dnb": [
+            "400",
+            "420",
+            "430",
+            "439",
+            "440",
+            "450",
+            "460",
+            "470",
+            "480",
+            "490",
+            "491.8"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "comic",
+      "name": "Comic",
+      "raum": "durchgang",
+      "prioritaet": 70,
+      "wenn": [
+        {
+          "dnb": [
+            "741.5"
+          ]
+        },
+        {
+          "schlagwort": [
+            "Comic",
+            "Graphic Novel"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "arbeit-gewerkschaften",
+      "name": "Arbeit und Gewerkschaften",
+      "raum": "durchgang",
+      "prioritaet": 70,
+      "wenn": [
+        {
+          "schlagwort": [
+            "Gewerkschaft",
+            "Arbeiterbewegung",
+            "Arbeitskampf",
+            "Streik",
+            "Arbeiterklasse",
+            "Lohnarbeit"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "marxismus",
+      "name": "Marxismus",
+      "raum": "durchgang",
+      "prioritaet": 70,
+      "wenn": [
+        {
+          "schlagwort": [
+            "Marxismus",
+            "Marxistisch",
+            "Historischer Materialismus",
+            "Kritik der politischen Ökonomie"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "recht",
+      "name": "Recht",
+      "raum": "durchgang",
+      "prioritaet": 50,
+      "wenn": [
+        {
+          "dnb": [
+            "340"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wirtschaft",
+      "name": "Wirtschaft",
+      "raum": "durchgang",
+      "prioritaet": 50,
+      "wenn": [
+        {
+          "dnb": [
+            "330",
+            "333.7",
+            "650"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "berlin",
+      "name": "Berlin",
+      "raum": "mittelraum",
+      "prioritaet": 80,
+      "wenn": [
+        {
+          "schlagwort": [
+            "Berlin"
+          ]
+        }
+      ],
+      "hinweis": "Ort schlägt Epoche: Berlin im Nationalsozialismus steht hier. Prüft Schlagwörter und Geografika."
+    },
+    {
+      "id": "musik",
+      "name": "Musik",
+      "raum": "mittelraum",
+      "prioritaet": 50,
+      "wenn": [
+        {
+          "dnb": [
+            "780"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "noten",
+      "name": "Noten",
+      "raum": "mittelraum",
+      "prioritaet": 70,
+      "wenn": [
+        {
+          "medium": [
+            "Noten",
+            "Musikalie"
+          ]
+        },
+        {
+          "schlagwort": [
+            "Noten",
+            "Partitur",
+            "Klavierauszug"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "schallplatten",
+      "name": "Schallplatten",
+      "raum": "mittelraum",
+      "prioritaet": 90,
+      "wenn": [
+        {
+          "medium": [
+            "Schallplatte",
+            "Tonträger"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "psychologie",
+      "name": "Psychologie und Pädagogik",
+      "raum": "mittelraum",
+      "prioritaet": 50,
+      "wenn": [
+        {
+          "dnb": [
+            "150",
+            "370"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "feminismus",
+      "name": "Feminismus",
+      "raum": "mittelraum",
+      "prioritaet": 70,
+      "wenn": [
+        {
+          "schlagwort": [
+            "Feminismus",
+            "Frauenbewegung",
+            "Geschlechterforschung",
+            "Gender",
+            "Frauenrechte"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "theologien",
+      "name": "Theologien",
+      "raum": "mittelraum",
+      "prioritaet": 50,
+      "wenn": [
+        {
+          "dnb": [
+            "200",
+            "220",
+            "230",
+            "290"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "architektur",
+      "name": "Architektur",
+      "raum": "mittelraum",
+      "prioritaet": 50,
+      "wenn": [
+        {
+          "dnb": [
+            "720"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "naturwissenschaften",
+      "name": "Naturwissenschaften",
+      "raum": "mittelraum",
+      "prioritaet": 50,
+      "wenn": [
+        {
+          "dnb": [
+            "500",
+            "510",
+            "520",
+            "530",
+            "540",
+            "550",
+            "560",
+            "570",
+            "580",
+            "590"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "technik",
+      "name": "Technik",
+      "raum": "mittelraum",
+      "prioritaet": 50,
+      "wenn": [
+        {
+          "dnb": [
+            "004",
+            "600",
+            "620",
+            "621.3",
+            "624",
+            "660",
+            "670",
+            "690"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "englische-fiktion",
+      "name": "Englische Fiktion",
+      "raum": "mittelraum",
+      "prioritaet": 70,
+      "wenn": [
+        {
+          "dnb": [
+            "B"
+          ],
+          "sprache": [
+            "eng"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "theater",
+      "name": "Theater",
+      "raum": "mittelraum",
+      "prioritaet": 50,
+      "wenn": [
+        {
+          "dnb": [
+            "792"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "film",
+      "name": "Film",
+      "raum": "mittelraum",
+      "prioritaet": 50,
+      "wenn": [
+        {
+          "dnb": [
+            "791"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fotografie",
+      "name": "Fotografie",
+      "raum": "mittelraum",
+      "prioritaet": 50,
+      "wenn": [
+        {
+          "dnb": [
+            "770"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "biografien",
+      "name": "Biografien",
+      "raum": "mittelraum",
+      "prioritaet": 55,
+      "wenn": [
+        {
+          "dnb": [
+            "920"
+          ]
+        },
+        {
+          "schlagwort": [
+            "Biografie",
+            "Autobiografie",
+            "Memoiren",
+            "Erinnerungen"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "weitere-sachgebiete",
+      "name": "Weitere Sachgebiete",
+      "raum": "mittelraum",
+      "prioritaet": 40,
+      "wenn": [
+        {
+          "dnb": [
+            "000",
+            "010",
+            "020",
+            "030",
+            "050",
+            "060",
+            "070",
+            "080",
+            "090",
+            "130",
+            "310",
+            "350",
+            "355",
+            "360",
+            "380",
+            "390",
+            "610",
+            "630",
+            "640",
+            "710",
+            "790",
+            "793",
+            "796"
+          ]
+        }
+      ],
+      "hinweis": "Medizin, Kochen, Garten, Sport, Esoterik, Medien und alles ohne eigene Abteilung."
+    },
+    {
+      "id": "geschichte",
+      "name": "Geschichte",
+      "raum": "flur",
+      "prioritaet": 50,
+      "wenn": [
+        {
+          "dnb": [
+            "900",
+            "940",
+            "943"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "antike",
+      "name": "Antike",
+      "raum": "flur",
+      "prioritaet": 65,
+      "wenn": [
+        {
+          "dnb": [
+            "930"
+          ]
+        },
+        {
+          "schlagwort": [
+            "Antike",
+            "Altertum",
+            "Römisches Reich"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mittelalter",
+      "name": "Mittelalter",
+      "raum": "flur",
+      "prioritaet": 65,
+      "wenn": [
+        {
+          "schlagwort": [
+            "Mittelalter"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ns-zweiter-weltkrieg",
+      "name": "NS und Zweiter Weltkrieg",
+      "raum": "flur",
+      "prioritaet": 75,
+      "wenn": [
+        {
+          "schlagwort": [
+            "Nationalsozialismus",
+            "Drittes Reich",
+            "Zweiter Weltkrieg",
+            "Weltkrieg (1939-1945)",
+            "Holocaust",
+            "Shoah",
+            "Judenverfolgung",
+            "Konzentrationslager"
+          ]
+        }
+      ],
+      "hinweis": "Die Shoah steht hier, nicht bei Judaica."
+    },
+    {
+      "id": "ddr",
+      "name": "DDR",
+      "raum": "flur",
+      "prioritaet": 65,
+      "wenn": [
+        {
+          "schlagwort": [
+            "DDR",
+            "Deutsche Demokratische Republik",
+            "SED",
+            "Staatssicherheit"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "reclam",
+      "name": "Reclam-Hefte",
+      "raum": "flur",
+      "prioritaet": 90,
+      "wenn": [
+        {
+          "reihe": [
+            "Reclams Universal-Bibliothek",
+            "Reclam"
+          ]
+        }
+      ],
+      "hinweis": "Alle Reclam-Hefte, auch Kant und Goethe."
+    },
+    {
+      "id": "science-fiction",
+      "name": "Science-Fiction",
+      "raum": "wintergarten",
+      "prioritaet": 70,
+      "wenn": [
+        {
+          "dnb": [
+            "B"
+          ],
+          "schlagwort": [
+            "Science-Fiction",
+            "Science Fiction",
+            "Utopie",
+            "Dystopie"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fantasy",
+      "name": "Fantasy",
+      "raum": "wintergarten",
+      "prioritaet": 70,
+      "wenn": [
+        {
+          "dnb": [
+            "B"
+          ],
+          "schlagwort": [
+            "Fantasy",
+            "Fantastische Literatur"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "krimi-thriller-horror",
+      "name": "Krimi, Thriller, Horror",
+      "raum": "wintergarten",
+      "prioritaet": 70,
+      "wenn": [
+        {
+          "dnb": [
+            "B"
+          ],
+          "schlagwort": [
+            "Kriminalroman",
+            "Krimi",
+            "Thriller",
+            "Psychothriller",
+            "Horror",
+            "Detektivroman",
+            "Gruselgeschichte"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "lyrik",
+      "name": "Lyrik",
+      "raum": "wintergarten",
+      "prioritaet": 70,
+      "wenn": [
+        {
+          "dnb": [
+            "B"
+          ],
+          "schlagwort": [
+            "Lyrik",
+            "Gedicht",
+            "Gedichte",
+            "Ballade"
+          ]
+        }
+      ],
+      "hinweis": "Alle Lyrik, auch Goethe und Rilke."
+    },
+    {
+      "id": "jugendbuecher",
+      "name": "Jugendbücher",
+      "raum": "wintergarten",
+      "prioritaet": 72,
+      "wenn": [
+        {
+          "dnb": [
+            "K"
+          ],
+          "schlagwort": [
+            "Jugendbuch",
+            "Jugendliteratur",
+            "Jugendroman"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "kdw-fremdsprachig",
+      "name": "Kulturen der Welt: Bücher in anderen Sprachen",
+      "raum": "wintergarten",
+      "prioritaet": 68,
+      "wenn": [
+        {
+          "sprache_nicht": [
+            "ger",
+            "eng"
+          ]
+        }
+      ],
+      "hinweis": "Englische Belletristik steht im Mittelraum."
+    },
+    {
+      "id": "kdw-laender",
+      "name": "Kulturen der Welt: andere Länder",
+      "raum": "wintergarten",
+      "prioritaet": 60,
+      "wenn": [
+        {
+          "dnb": [
+            "915",
+            "916",
+            "917",
+            "918",
+            "919",
+            "950",
+            "960",
+            "970",
+            "980",
+            "990"
+          ]
+        },
+        {
+          "dnb": [
+            "900",
+            "910",
+            "914",
+            "940"
+          ],
+          "geografikum_nicht": [
+            "Deutschland",
+            "Bundesrepublik",
+            "DDR",
+            "Preußen",
+            "Berlin",
+            "Europa"
+          ]
+        }
+      ],
+      "hinweis": "Geschichte und Landeskunde aller Länder außer Deutschland, auch europäischer. Ohne Geografikum bleibt Europa-Geschichte im Flur."
+    },
+    {
+      "id": "reisefuehrer",
+      "name": "Reiseführer",
+      "raum": "wintergarten",
+      "prioritaet": 70,
+      "wenn": [
+        {
+          "schlagwort": [
+            "Reiseführer"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "woerterbuecher",
+      "name": "Wörterbücher und Sprachlernen",
+      "raum": "wintergarten",
+      "prioritaet": 70,
+      "wenn": [
+        {
+          "schlagwort": [
+            "Wörterbuch",
+            "Sprachkurs",
+            "Sprachführer",
+            "Lehrwerk"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "belletristik",
+      "name": "Belletristik",
+      "raum": "werkstatt",
+      "prioritaet": 52,
+      "wenn": [
+        {
+          "dnb": [
+            "B"
+          ]
+        }
+      ],
+      "hinweis": "Priorität 52 statt 50: Die DNB gibt Romanen die Sachgruppe und „B“ zugleich (z. B. 830 und B). B muss deshalb vor Literaturwissenschaft (50) gewinnen."
+    },
+    {
+      "id": "rueckfall",
+      "name": "Ohne passende Abteilung",
+      "raum": "mittelraum",
+      "prioritaet": 1,
+      "rueckfall": true,
+      "wenn": [
+        {}
+      ],
+      "hinweis": "Greift nur, wenn sonst nichts passt. Wird als „geraten“ angezeigt."
+    }
+  ],
+  "grundriss": {
+    "viewBox": [
+      590,
+      110,
+      815,
+      990
+    ],
+    "eingang": [
+      865,
+      1077
+    ],
+    "hinweis": "Raumumrisse aus dem Raumplan-Editor (Sept. 2026), nur zur schematischen Anzeige."
+  },
+  "anzeige": {
+    "popup": true,
+    "verzoegerung_ms": 300,
+    "alternativen": 2,
+    "regel_zeigen": false,
+    "hinweis_geraten": "Kein klarer Platz, am ehesten {raum}"
+  }
+}

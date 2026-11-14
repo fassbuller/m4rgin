@@ -12,6 +12,7 @@ import {
 } from '../db';
 import { euro, Kategorie, KATEGORIE_LABEL, PreisRegeln, ZUSTAND_LABEL } from '../lib/preis';
 import { BEREICHE, bereichFuerBuch, erstesFach } from '../lib/bereiche';
+import { LADENPLAN, raumVon } from '../lib/ladenplan';
 import { Einstellungen } from '../einstellungen';
 import { Sortierung, stapelGruppen, stapelWert } from '../lib/stapelwert';
 import { aufFarbe, BEREICH, F, ABSTAND, KASTEN, KATEGORIE_FARBE, SCHRIFT, ZUSTAND_FARBE } from '../theme';
@@ -34,7 +35,7 @@ interface Dialog {
   name: string;
 }
 
-const SORTIERUNG_LABEL: Record<Sortierung, string> = { kategorie: 'Kategorie', preis: 'Preis', zeit: 'Zuletzt gescannt' };
+const SORTIERUNG_LABEL: Record<Sortierung, string> = { kategorie: 'Kategorie', raum: 'Raum', preis: 'Preis', zeit: 'Zuletzt gescannt' };
 
 export function StapelScreen({ regeln, einst, onGeaendert, version }: Props) {
   const [aktiv, setAktiv] = useState<Stapel | null>(null);
@@ -64,7 +65,7 @@ export function StapelScreen({ regeln, einst, onGeaendert, version }: Props) {
   };
 
   const wert = stapelWert(eintraege);
-  const gruppen = stapelGruppen(eintraege, sortierung);
+  const gruppen = stapelGruppen(eintraege, sortierung, LADENPLAN.raeume);
 
   const neuerStapel = () => {
     setBlatt(false);
@@ -158,6 +159,14 @@ export function StapelScreen({ regeln, einst, onGeaendert, version }: Props) {
               <Text style={st.gruppeName}>
                 {KATEGORIE_LABEL[section.kategorie]} · {section.anzahl}
                 {section.kategorie === 'lager' ? ' · vorläufig' : ''}
+              </Text>
+              <Text style={st.gruppeSumme}>{euro(section.summe)}</Text>
+            </View>
+          ) : section.titel ? (
+            // Raum-Sortierung: Raumname in Raumfarbe
+            <View style={[st.gruppe, { borderBottomColor: section.farbe ?? F.grau }]}>
+              <Text style={st.gruppeName}>
+                {section.titel} · {section.anzahl}
               </Text>
               <Text style={st.gruppeSumme}>{euro(section.summe)}</Text>
             </View>
@@ -292,8 +301,14 @@ function Zeile({ e, einst, onOeffnen, onSchnell, onEntfernen }: {
   onEntfernen: (zurueck: () => void) => void;
 }) {
   const fach = bereichFuerBuch(e);
-  const fachFarbe = fach ? BEREICHE[fach].farbe : F.grau;
-  const fachName = fach === 'grabbel' ? null : erstesFach(e.sachgruppen) ?? (fach ? BEREICHE[fach].name : null);
+  // Ladenplan schlägt die alte Sachgruppen-Zuordnung: „Wintergarten · Lyrik“ in Raumfarbe (nicht für die Grabbelkiste)
+  const raum = fach !== 'grabbel' && e.standort_raum ? raumVon(LADENPLAN, e.standort_raum) : undefined;
+  const fachFarbe = raum ? raum.farbe : fach ? BEREICHE[fach].farbe : F.grau;
+  const fachName = fach === 'grabbel'
+    ? null
+    : raum
+      ? `${raum.name} · ${e.standort_abteilung ?? ''}`.replace(/ · $/, '')
+      : erstesFach(e.sachgruppen) ?? (fach ? BEREICHE[fach].name : null);
   const s = seltenheitAusEintrag(e, einst.seltenheit);
   const stern = s && s.bestaetigt ? (s.stufe === 'raritaet' ? '✦✦ ' : s.stufe === 'selten' ? '✦ ' : '') : '';
 

@@ -10,6 +10,8 @@ import { BEREICH, F, KASTEN, KATEGORIE_FARBE, schatten } from '../theme';
 import { Genres, Icon, KategorieBadge } from './Teile';
 import { Cover } from './Cover';
 import { Seltenheit } from '../lib/seltenheit';
+import { StandortZeile } from './Ladenplan';
+import { Standort } from '../lib/ladenplan';
 import { Funkeln, GlanzRahmen, HoloGlanz, SchimmerText, SeltenheitsInfo, STUFE_FARBE, StufenBadge } from './Glanz';
 
 interface Props {
@@ -22,6 +24,8 @@ interface Props {
   vorlaeufig: PreisErgebnis | null;
   trends: Signal[] | null;
   seltenheit: Seltenheit | null;
+  /** Wo es laut Ladenplan steht (null = unbekannt bzw. noch nicht da) */
+  standort?: Standort | null;
   /** Animationen erlaubt (Einstellung + Gerät) */
   bewegung: boolean;
   onOeffnen: () => void;
@@ -97,6 +101,7 @@ export function LiveKarte(p: Props) {
           {quelleFehlt && <Icon name="alert" size={16} farbe={F.orange} />}
         </View>
       )}
+      {p.standort && p.vorlaeufig?.kategorie !== 'grabbel' && <StandortZeile s={p.standort} />}
       {p.trends && p.trends.some((x) => x.text) && (
         <View style={[st.reihe, { marginTop: 4 }]}>
           <Icon name="trending-up" size={16} farbe={F.hand} />

@@ -18,7 +18,8 @@ import { Signal } from '../lib/trend';
 import { Einstellungen } from '../einstellungen';
 import { korrekturSpeichern, LogEintrag, logAuspreisen, logSuche, logVerworfen, Methode } from '../db';
 import { bewerteKonfidenz } from '../lib/konfidenz';
-import { marktFuer, seltenheitFuer, sucheFelder, sucheIsbn, trendsFuer, vorlaeufig } from '../dienste';
+import { marktFuer, seltenheitFuer, standortFuer, sucheFelder, sucheIsbn, trendsFuer, vorlaeufig } from '../dienste';
+import { Standort } from '../lib/ladenplan';
 import { useBewegung } from '../components/Glanz';
 import { MitteKarte } from '../components/MitteKarte';
 import { KartenInhalt } from '../components/BuchKarte';
@@ -49,6 +50,8 @@ interface Vorgang {
   trends: Signal[] | null;
   vorlaeufig: PreisErgebnis | null;
   ausgepreist: boolean;
+  /** Wo das Buch laut Ladenplan vermutlich steht (aus der DNB-Sacherschließung) */
+  standort?: Standort | null;
 }
 
 interface Props {
@@ -103,7 +106,17 @@ export function ScanScreen({ aktiv, einst, stapel, onStapelGeaendert, onZumStape
           stufe: seltenheit.bestaetigt ? seltenheit.stufe : 'gewoehnlich',
           // „prüfen“ auch bei roter Ampel: Der Preis selbst ist unsicher
           pruefen: (!seltenheit.bestaetigt && seltenheit.stufe !== 'gewoehnlich') || konfidenz?.ampel === 'rot',
-          ort: vorgang.vorlaeufig ? KATEGORIE_LABEL[vorgang.vorlaeufig.kategorie] : null,
+          // Im Laden (Regal) zusätzlich, wo es laut Ladenplan hingehört: „Regal · Wintergarten · Lyrik“
+          ort: vorgang.vorlaeufig
+            ? [
+                KATEGORIE_LABEL[vorgang.vorlaeufig.kategorie],
+                vorgang.vorlaeufig.kategorie === 'regal' && vorgang.standort && !vorgang.standort.geraten
+                  ? `${vorgang.standort.vorschlag.raumName} · ${vorgang.standort.vorschlag.name}`
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')
+            : null,
         }
       : null;
 
@@ -135,7 +148,11 @@ export function ScanScreen({ aktiv, einst, stapel, onStapelGeaendert, onZumStape
   const titelGewaehlt = useCallback(
     async (t: Titel, start: number, hinweis?: string) => {
       setTreffer(null);
-      aendere({ titel: t, laedt: false, fehler: hinweis, marktLaedt: true }, start);
+      aendere({ titel: t, laedt: false, fehler: hinweis, marktLaedt: true, standort: null }, start);
+      // Ladenplan parallel zum Markt – darf scheitern, ohne den Vorgang zu stören
+      standortFuer(t)
+        .then((s) => aendere({ standort: s }, start))
+        .catch(() => undefined);
       try {
         const m = await marktFuer(t, einst);
         const alleAus = m.status.length > 0 && m.status.every((x) => !x.ok);
@@ -321,6 +338,7 @@ export function ScanScreen({ aktiv, einst, stapel, onStapelGeaendert, onZumStape
       markt,
       anker: d.anker,
       trend: v.trends?.map((s) => s.text).filter(Boolean).join(' · ') || null,
+      standort: v.standort ?? null,
     });
     // Abweichung vom Vorschlag protokollieren – Grundlage, um die Regeln später nachzujustieren
     const preisGeaendert = Math.abs(d.endpreis - d.ergebnis.vorschlag) >= 0.005;
@@ -443,6 +461,7 @@ export function ScanScreen({ aktiv, einst, stapel, onStapelGeaendert, onZumStape
             vorlaeufig={vorgang.vorlaeufig}
             trends={vorgang.trends}
             seltenheit={seltenheit}
+            standort={vorgang.standort ?? null}
             bewegung={bewegung}
             onOeffnen={() => setSheetOffen(true)}
             onSchliessen={vorgangBeenden}
@@ -487,6 +506,7 @@ export function ScanScreen({ aktiv, einst, stapel, onStapelGeaendert, onZumStape
           seltenheitRegeln={einst.seltenheit}
           links={einst.links}
           haven={einst.haven}
+          standort={vorgang.standort ?? null}
           onSpeichern={speichern}
           onVerwerfen={() => {
             setSheetOffen(false);

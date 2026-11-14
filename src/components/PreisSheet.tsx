@@ -20,6 +20,8 @@ import { BEREICH, F, hell, KATEGORIE_FARBE, ABSTAND, SCHRIFT, schatten, ZUSTAND_
 import { Abschnitt, Chip, Genres, Icon, KategorieBadge, Knopf, MERKMAL_ICON, Schritt, Stepper } from './Teile';
 import { Rechnung } from './Rechnung';
 import { BuchAktionen } from './BuchAktionen';
+import { StandortBlock } from './Ladenplan';
+import { Standort } from '../lib/ladenplan';
 import { HavenZugang } from '../lib/haven';
 import { Cover } from './Cover';
 import { Funkeln, HoloGlanz, SchimmerText, SeltenheitsInfo, STUFE_FARBE, StufenBadge, useBewegung } from './Glanz';
@@ -52,6 +54,8 @@ interface Props {
   links: LinkVorlage[];
   /** Haven-Zugang für „An Haven“ (leer = Knopf erklärt die Einrichtung) */
   haven?: HavenZugang;
+  /** Ladenplan-Standort (DNB-Sacherschließung), null = unbekannt */
+  standort?: Standort | null;
   onSpeichern: (d: AuspreisDaten) => void;
   onVerwerfen: () => void;
 }
@@ -207,6 +211,14 @@ export function PreisSheet(p: Props) {
               </Pressable>
             ))}
           </View>
+        )}
+
+        {/* Ladenplan: Wo steht es? (nicht für die Grabbelkiste) */}
+        {p.standort && ergebnis?.kategorie !== 'grabbel' && (
+          <>
+            <Abschnitt titel={ergebnis?.kategorie === 'lager' ? 'Wo stünde es im Laden?' : 'Wo steht es?'} icon="map-marker" farbe={F.gruen} />
+            <StandortBlock s={p.standort} />
+          </>
         )}
 
         {/* Markt */}
