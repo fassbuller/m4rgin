@@ -1,7 +1,9 @@
 // Buch vom Handy an Haven schicken (Firestream-Betriebs-App). Haven zeigt eingegangene Bücher oben in der
 // Leiste hinter einem kleinen Handy-Symbol an – wie die Download-Anzeige im Firefox.
 //
-// Vertrag (mit Firestream2 abgestimmt, Haven-Seite dort umgesetzt):
+// Geräte-Schlüssel: in Haven Administration → Verwaltung → „Geräte (m4rgin)“ → Gerät hinzufügen; Haven zeigt
+// Adresse und Schlüssel (beginnt mit m4g_) genau einmal an, Widerruf im selben Bildschirm.
+// Vertrag (mit Firestream2 abgestimmt, Haven-Seite dort umgesetzt, firestream2 v0.99.130):
 //   POST {adresse}/api/m4rgin/eingang
 //   Authorization: Bearer {Geräte-Schlüssel}   ← gibt Haven je Handy aus (keine Haven-Anmeldung am Handy)
 //   Content-Type: application/json
@@ -82,8 +84,19 @@ export async function anHavenSenden(z: HavenZugang, buch: HavenBuch, timeoutMs =
       body: JSON.stringify(buch),
       signal: ctrl.signal,
     });
-    if (res.status === 401 || res.status === 403) throw new Error('Haven kennt diesen Geräte-Schlüssel nicht (Einstellungen prüfen).');
-    if (res.status === 404) throw new Error('Haven hat noch keinen Empfang für m4rgin (/api/m4rgin/eingang).');
+    // Antworten laut Haven (firestream2 v0.99.130): 201 angekommen · 401 Schlüssel fehlt/unbekannt/widerrufen ·
+    // 404 Empfang in diesem Haven aus · 400 Feld ungültig {error:{details:{field}}} · 413 über 8 KB · 429 zu viele
+    if (res.status === 401 || res.status === 403) throw new Error('Haven kennt diesen Geräte-Schlüssel nicht oder er wurde widerrufen (Einstellungen prüfen).');
+    if (res.status === 404) throw new Error('Der m4rgin-Empfang ist in diesem Haven ausgeschaltet (oder die Adresse stimmt nicht).');
+    if (res.status === 429) throw new Error('Zu viele Sendungen – in einer Minute nochmal.');
+    if (res.status === 413) throw new Error('Haven lehnt ab: Daten zu groß.');
+    if (res.status === 400) {
+      const feld = await res
+        .json()
+        .then((j: { error?: { details?: { field?: string } } }) => j?.error?.details?.field)
+        .catch(() => undefined);
+      throw new Error(`Haven lehnt ab: Feld ${feld ? `„${feld}“ ` : ''}ungültig.`);
+    }
     if (!res.ok) throw new Error(`Haven antwortet mit ${res.status}.`);
   } catch (e) {
     if ((e as Error)?.name === 'AbortError') throw new Error('Haven antwortet nicht (Adresse/WLAN prüfen).');

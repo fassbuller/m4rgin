@@ -185,7 +185,7 @@ export function EinstellungenScreen({ einst, onGespeichert, onEinfuehrung }: Pro
         <Abschnitt titel="Haven" icon="cellphone-arrow-down" farbe={F.blau}>
           <Text style={st.klein}>
             „An Haven“ im Preis-Blatt und im Stapel schickt das Buch an Haven – dort erscheint es oben beim Handy-Symbol.
-            Den Geräte-Schlüssel gibt Haven für dieses Handy aus.
+            Adresse und Geräte-Schlüssel (beginnt mit m4g_) zeigt Haven einmal an: Administration → Verwaltung → „Geräte (m4rgin)“ → Gerät hinzufügen.
           </Text>
           <Feld label="Haven-Adresse (z. B. https://haven…)" wert={e.haven.adresse} setze={(v) => setE({ ...e, haven: { ...e.haven, adresse: v.trim() } })} />
           <Feld label="Geräte-Schlüssel" wert={e.haven.schluessel} geheim setze={(v) => setE({ ...e, haven: { ...e.haven, schluessel: v.trim() } })} />

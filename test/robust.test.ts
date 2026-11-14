@@ -442,7 +442,9 @@ test('Haven: Bereitschaft, URL, Teilen-Text und Senden mit Geräte-Schlüssel', 
     antwort = 401;
     await assert.rejects(anHavenSenden(z, p), /Geräte-Schlüssel/);
     antwort = 404;
-    await assert.rejects(anHavenSenden(z, p), /keinen Empfang/);
+    await assert.rejects(anHavenSenden(z, p), /ausgeschaltet/);
+    antwort = 429;
+    await assert.rejects(anHavenSenden(z, p), /Minute/);
   } finally {
     globalThis.fetch = alt;
   }
