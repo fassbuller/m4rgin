@@ -7,7 +7,9 @@
 // - Suche: GET https://api.booklooker.de/2.0/search?token=…&isbn=…  → {status:"OK", returnValue:[…Artikel…]}
 //   Fehler: {status:"NOK", returnValue:"QUOTA_EXCEEDED" | "TEMPORARILY_BLOCKED" | "SERVER_DOWN" | …}
 // - Kostenlos bis 50 Aufrufe pro 10 Minuten.
-// ⚠ Die Feldnamen der Artikel nennt die Doku nicht („selbsterklärende Liste“). Der Parser liest jedes
+// Feldnamen live geprüft (14.11.2026, aus Pegel): returnValue ist ein JSON-TEXT ("[]" bzw. "{\"Book\":[…]}"),
+// Artikel mit SellerType (Zahl), Author, Title, Price, ShippingPrice, New, Condition, Edition (= Einband),
+// Format (= Maße!), EditionNo, Country, Year, DetailLinkUrl, Offerer. Der Parser liest jedes
 //   Artikel-Objekt generisch und sucht Preisfelder über mehrere mögliche Namen. Beim ersten Live-Test
 //   über „Quellen testen“ die Rohantwort prüfen. Kommt doch XML, greift der alte XML-Parser.
 
@@ -144,23 +146,32 @@ function angebotAus(o: Record<string, unknown>, versandPauschale: number): Angeb
   if (preis == null || preis <= 0) return null;
   const versandEcht = zahl(erstes(o, ['shippingprice', 'shipping', 'porto', 'shippingcosts', 'shippingcost']));
   const versand = versandEcht ?? versandPauschale;
+  // SellerType laut Doku: 0 = privat, 1 = gewerblich (kommt live als Zahl; erstes() macht daraus Text)
   const sellerType = erstes(o, ['sellertype']);
   const autor = erstes(o, ['author', 'autor']);
+  // „Offerer“ ist bei preisgebundener Neuware oft „verschiedene Anbieter“ – kein echter Händlername
+  const anbieter = erstes(o, ['offerer', 'seller', 'sellername', 'anbieter', 'username', 'nickname']);
+  const zustand = erstes(o, ['condition', 'zustand']);
+  // Live-Feldnamen (14.11.2026): „Edition“ ist der Einband („Taschenbuch“), „Format“ sind die Maße
+  // („206 mm × 126 mm × 36 mm“) – Maße gehören weder in den Zustand noch in die Einband-Erkennung.
+  const einband = erstes(o, ['edition', 'binding', 'einband']);
+  const neu = erstes(o, ['new']) === '1' || /neuware/i.test(zustand ?? '');
   return {
     quelle: 'booklooker',
     plattform: 'booklooker',
-    haendler: erstes(o, ['seller', 'sellername', 'offerer', 'anbieter', 'username', 'nickname']) ?? (sellerType === '0' ? 'privat' : undefined),
+    haendler: (anbieter && !/^verschiedene anbieter$/i.test(anbieter) ? anbieter : undefined) ?? (sellerType === '0' ? 'privat' : undefined),
     preis,
     versand,
     versandGeschaetzt: versandEcht == null,
     gesamt: runde2(preis + versand),
-    zustandText: [erstes(o, ['condition', 'zustand']), erstes(o, ['format']), erstes(o, ['editionno'])].filter(Boolean).join(' · ') || undefined,
+    zustandText: [zustand, einband, erstes(o, ['editionno'])].filter(Boolean).join(' · ') || undefined,
     jahr: erstes(o, ['year', 'jahr', 'publicationyear'])?.match(/\d{4}/)?.[0],
-    land: erstes(o, ['sellercountry', 'country'])?.toUpperCase(),
+    land: erstes(o, ['country', 'sellercountry'])?.toUpperCase(),
     url: erstes(o, ['detaillinkurl', 'deeplink', 'url', 'link']),
     titel: [autor, erstes(o, ['title', 'titel'])].filter(Boolean).join(': ') || undefined,
     autor,
-    gebunden: gebundenAus(erstes(o, ['format', 'binding', 'einband'])),
+    gebunden: gebundenAus(einband ?? (/\bmm\b/.test(erstes(o, ['format']) ?? '') ? undefined : erstes(o, ['format']))),
+    neu: neu || undefined,
   };
 }
 
@@ -178,7 +189,15 @@ function artikelListe(v: unknown): Record<string, unknown>[] {
 
 /** returnValue der REST-Suche → Angebote. JSON-Liste, sonst (falls doch XML geliefert wird) XML. */
 export function parseBooklookerAntwort(returnValue: unknown, versandPauschale: number): Angebot[] {
-  if (typeof returnValue === 'string') return returnValue.includes('<') ? parseBooklooker(returnValue, versandPauschale) : [];
+  // Live (14.11.2026): returnValue ist selbst ein JSON-Text – "[]" ohne Treffer, sonst "{\"Book\":[{…}]}"
+  if (typeof returnValue === 'string') {
+    const text = returnValue;
+    try {
+      returnValue = JSON.parse(text);
+    } catch {
+      return text.includes('<') ? parseBooklooker(text, versandPauschale) : [];
+    }
+  }
   return artikelListe(returnValue)
     .map((o) => angebotAus(flach(o), versandPauschale))
     .filter((a): a is Angebot => a != null);

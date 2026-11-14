@@ -197,7 +197,7 @@ export async function quellenTesten(e: Einstellungen, isbn = '9783499256356'): P
       t0 = Date.now();
       const rv = await mitTimeout(booklookerRoh(e.booklooker, { isbn }), 15000);
       const n = parseBooklookerAntwort(rv, 0).length;
-      teile.push(`■ booklooker-Suche: ${n} Angebote erkannt (${sek(t0)})${aus(e.booklooker.aktiv)}\n${JSON.stringify(rv).slice(0, 1500)}`);
+      teile.push(`■ booklooker-Suche: ${n} Angebote erkannt (${sek(t0)})${aus(e.booklooker.aktiv)}\n${(typeof rv === 'string' ? rv : JSON.stringify(rv)).slice(0, 1500)}`);
     } catch (err) {
       teile.push(`■ booklooker: ${kurzerFehler(String(err))} nach ${sek(t0)}: ${String(err)}${aus(e.booklooker.aktiv)}`);
     }

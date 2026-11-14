@@ -378,3 +378,34 @@ test('booklooker REST: Anmeldung, Suche, JSON-Artikel, Token erneuern, Kontingen
     globalThis.fetch = alt;
   }
 });
+
+test('booklooker live-Form: returnValue ist JSON-Text, Edition = Einband, Format = Maße, Neuware', async () => {
+  const { parseBooklookerAntwort } = await import('../src/lib/quellen/booklooker');
+  // So kam es live am 14.11.2026 (Suche title=Triggerpunkte, author=Mau, Steffen)
+  const rv = JSON.stringify({
+    Book: [
+      {
+        SellerType: 1, Author: 'Mau, Steffen', Title: 'Triggerpunkte', Price: '26.00', ShippingPrice: '0.00', ISBN: '9783518029916',
+        New: 1, Condition: 'Neuware', Publisher: 'Suhrkamp', PublisherPlace: 'Berlin', Format: '206 mm × 126 mm × 36 mm',
+        Edition: 'Taschenbuch', EditionNo: 'Originalausgabe', Country: 'DE', Year: '2023',
+        DetailLinkUrl: 'https://www.booklooker.de/x/1', Offerer: 'verschiedene Anbieter',
+      },
+      {
+        SellerType: 0, Author: 'Mau, Steffen', Title: 'Triggerpunkte', Price: '14.50', ShippingPrice: '1.95',
+        New: 0, Condition: 'sehr gut', Edition: 'Hardcover', Country: 'AT', Year: '2023', DetailLinkUrl: 'https://www.booklooker.de/x/2', Offerer: 'Antiquariat Muster',
+      },
+    ],
+  });
+  const a = parseBooklookerAntwort(rv, 3);
+  assert.equal(a.length, 2);
+  assert.deepEqual(
+    a.map((x) => [x.gesamt, x.versandGeschaetzt, x.gebunden, x.neu, x.haendler, x.land, x.jahr]),
+    [
+      [26, false, false, true, undefined, 'DE', '2023'],
+      [16.45, false, true, undefined, 'Antiquariat Muster', 'AT', '2023'],
+    ],
+  );
+  assert.equal(a[0].zustandText, 'Neuware · Taschenbuch · Originalausgabe');
+  assert.ok(!a[0].zustandText?.includes('mm'));
+  assert.deepEqual(parseBooklookerAntwort('[]', 3), []);
+});
