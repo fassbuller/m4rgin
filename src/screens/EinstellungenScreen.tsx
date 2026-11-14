@@ -7,6 +7,7 @@ import { einstellungenSpeichern, ignorierteHaendlerLaden, ignorierteHaendlerSpei
 import { Auswertung, werteKorrekturenAus } from '../lib/korrektur';
 import { quellenTesten } from '../dienste';
 import { VERSION_TEXT } from '../version';
+import { KARTENSTIL_LABEL, KARTENSTILE, setzeKartenstil, STUFE_NAME } from '../kartenstil';
 import { Merkmal, MERKMAL_LABEL, ZweigRegeln, Zustand, ZUSTAND_LABEL } from '../lib/preis';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BEREICH, F, hell, RADIUS, ABSTAND, ZUSTAND_FARBE } from '../theme';
@@ -281,13 +282,40 @@ export function EinstellungenScreen({ einst, onGespeichert, onEinfuehrung }: Pro
           <Text style={st.klein}>
             Stufen Gefragt → Selten → Rarität. Glitzer gibt es nur, wenn die Gründe belegt sind (Fehlalarm-Schutz) – sonst erscheint das Abzeichen mit „prüfen“. Neuerscheinungen und noch lieferbare Bücher zählen nicht als selten.
           </Text>
+          <Text style={[st.label, { marginTop: 8 }]}>Kartenstil</Text>
+          <View style={st.reihe}>
+            {KARTENSTILE.map((k) => (
+              <Chip
+                key={k}
+                label={KARTENSTIL_LABEL[k]}
+                aktiv={(sr.kartenstil ?? 'ultimate') === k}
+                farbe={F.lila}
+                onPress={() => {
+                  setS({ kartenstil: k });
+                  setzeKartenstil(k); // sofort sichtbar, auch bei „Karten ausprobieren“; gespeichert wird mit „Speichern“
+                }}
+              />
+            ))}
+          </View>
+          <Text style={st.klein}>
+            {(sr.kartenstil ?? 'ultimate') === 'magic'
+              ? 'Common (schwarz) · Uncommon (silber) · Rare (gold) · Mythic (orange-rot)'
+              : 'Bronze · Silber · Gold · Schwarz'}
+          </Text>
           <Schalter label="Glitzer-Effekte" wert={sr.effekte} setze={(v) => setS({ effekte: v })} />
-          <Schalter label="Große Enthüllung bei Gold und Schwarz" wert={sr.feier} setze={(v) => setS({ feier: v })} />
+          <Schalter
+            label={`Große Enthüllung bei ${STUFE_NAME[sr.kartenstil ?? 'ultimate'].selten.kurz} und ${STUFE_NAME[sr.kartenstil ?? 'ultimate'].raritaet.kurz}`}
+            wert={sr.feier} setze={(v) => setS({ feier: v })} />
           <Schalter label="Karten neigen sich mit dem Handy (3D)" wert={sr.neigung} setze={(v) => setS({ neigung: v })} />
           <Text style={[st.label, { marginTop: 8 }]}>Karten ausprobieren (Gold und Schwarz mit großer Feier)</Text>
           <View style={st.reihe}>
             {PROBEN.map((x) => (
-              <Chip key={x.label} label={x.label} farbe={F.tinte} onPress={() => setProbeDaten(x.daten)} />
+              <Chip
+                key={x.daten.seltenheit.stufe}
+                label={STUFE_NAME[sr.kartenstil ?? 'ultimate'][x.daten.seltenheit.stufe].kurz}
+                farbe={F.tinte}
+                onPress={() => setProbeDaten(x.daten)}
+              />
             ))}
           </View>
           <Schalter label="Vibration bei seltenen Büchern" wert={sr.vibration} setze={(v) => setS({ vibration: v })} />

@@ -26,6 +26,8 @@ export interface SeltenheitsRegeln {
   aufklappen: boolean;
   /** Karten neigen sich leicht mit dem Handy (3D) */
   neigung: boolean;
+  /** Farbwelt der Karten: „ultimate“ (Bronze/Silber/Gold/Schwarz) oder „magic“ (Common/Uncommon/Rare/Mythic) */
+  kartenstil?: 'ultimate' | 'magic';
   gefragtBisAngebote: number;
   seltenBisAngebote: number;
   raritaetBisAngebote: number;
@@ -51,6 +53,7 @@ export const STANDARD_SELTENHEIT: SeltenheitsRegeln = {
   feier: true,
   aufklappen: true,
   neigung: true,
+  kartenstil: 'ultimate',
   gefragtBisAngebote: 10,
   seltenBisAngebote: 3,
   raritaetBisAngebote: 1,

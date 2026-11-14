@@ -9,12 +9,29 @@ import { Text } from './Schrift';
 const AnimatedText = Animated.createAnimatedComponent(Text);
 import { Seltenheit, Stufe } from '../lib/seltenheit';
 import { aufFarbe, F } from '../theme';
+import { Kartenstil, kartenstil } from '../kartenstil';
 
+const FARBEN: Record<Kartenstil, Record<Stufe, string>> = {
+  ultimate: {
+    gewoehnlich: F.grau,
+    gefragt: '#8E99A6', // Silber
+    selten: '#eecb33', // Gold = Fountain-Gelb
+    raritaet: '#1d1d1b', // Tinte-Schwarz; Glanz, Rahmen und Feier zeigen dazu den Holo-Regenbogen
+  },
+  magic: {
+    gewoehnlich: '#2a2b2e', // Common: schwarz
+    gefragt: '#8fa6ba', // Uncommon: silber-blau
+    selten: '#c9a240', // Rare: gold
+    raritaet: '#e0612a', // Mythic: orange-rot
+  },
+};
+
+/** Farbe je Stufe – liefert immer die Farben des aktuellen Kartenstils (Einstellungen). */
 export const STUFE_FARBE: Record<Stufe, string> = {
-  gewoehnlich: F.grau,
-  gefragt: '#8E99A6', // Silber
-  selten: '#eecb33', // Gold = Fountain-Gelb
-  raritaet: '#1d1d1b', // Tinte-Schwarz; Glanz, Rahmen und Feier zeigen dazu den Holo-Regenbogen
+  get gewoehnlich() { return FARBEN[kartenstil()].gewoehnlich; },
+  get gefragt() { return FARBEN[kartenstil()].gefragt; },
+  get selten() { return FARBEN[kartenstil()].selten; },
+  get raritaet() { return FARBEN[kartenstil()].raritaet; },
 };
 const REGENBOGEN = ['#E4572E', '#F3C623', '#2E9E6B', '#1E9AA8', '#2D6CDF', '#B04FD6', '#E4572E'];
 

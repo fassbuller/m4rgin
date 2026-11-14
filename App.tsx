@@ -9,6 +9,7 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import { Einstellungen, mitStandards } from './src/einstellungen';
 import { Fangnetz } from './src/components/Fangnetz';
 import { fehlerText } from './src/lib/fehler';
+import { setzeKartenstil, useKartenstil } from './src/kartenstil';
 import { einstellungenLaden, LogEintrag, merkerLaden, merkerSpeichern, Stapel, stapelUebersicht } from './src/db';
 import { Einfuehrung } from './src/components/Einfuehrung';
 import { ScanScreen } from './src/screens/ScanScreen';
@@ -107,6 +108,12 @@ function Hauptfenster() {
       });
     stapelNeu();
   }, []);
+
+  // Kartenstil (FIFA Ultimate / Magic) app-weit setzen; useKartenstil() zeichnet die Karten dann neu
+  useEffect(() => {
+    if (einst) setzeKartenstil(einst.seltenheit.kartenstil);
+  }, [einst?.seltenheit.kartenstil]);
+  useKartenstil();
 
   useEffect(() => {
     if (einst) coverEinstellen(einst.googleBooksKey);

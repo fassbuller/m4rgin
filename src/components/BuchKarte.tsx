@@ -1,6 +1,7 @@
 // Die Buch-Karte (Variante „Sammelkarte“): Metall vollflächig, Preis groß oben links, Cover rechts,
-// Namensband unten. Vier Metalle nach Seltenheit:
-//   Bronze = gewöhnlich · Silber = gefragt · Gold = selten · Schwarz = Rarität (mit Holo-Regenbogen).
+// Namensband unten. Vier Stufen nach Seltenheit, Farben je Kartenstil (siehe src/kartenstil.ts):
+//   FIFA Ultimate: Bronze = gewöhnlich · Silber = gefragt · Gold = selten · Schwarz = Rarität (Holo-Regenbogen)
+//   Magic:         Common (schwarz) · Uncommon (silber) · Rare (gold) · Mythic (orange-rot, Holo)
 // Ein Glanzstreifen wandert langsam über das Metall (nativ animiert, aus bei „Bewegung reduzieren“).
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
@@ -14,6 +15,7 @@ import { F } from '../theme';
 import { BegrenzteMap } from '../lib/cover';
 import { findeWikiArtikel } from '../lib/wiki';
 import { sachgruppeOhneCode } from '../lib/bereiche';
+import { Kartenstil, STUFE_NAME, useKartenstil } from '../kartenstil';
 
 export type Metall = 'bronze' | 'silber' | 'gold' | 'schwarz';
 
@@ -24,20 +26,30 @@ export const METALL_FUER: Record<Stufe, Metall> = {
   raritaet: 'schwarz',
 };
 
-export const METALL_NAME: Record<Metall, string> = {
-  bronze: 'BRONZE',
-  silber: 'GEFRAGT',
-  gold: '✦ SELTEN',
-  schwarz: '✦✦ RARITÄT',
+type Palette = { verlauf: [string, string, string, string, string]; schrift: string; rahmen: string; akzent: string };
+
+/**
+ * Verlauf je Metall (dunkel – hell – mittel – hell – dunkel ergibt den Schimmer), Schrift- und Rahmenfarbe –
+ * je Kartenstil. „FIFA Ultimate“: Bronze/Silber/Gold/Schwarz. „Magic“: Common schwarz, Uncommon silber-blau,
+ * Rare gold, Mythic orange-rot.
+ */
+const PALETTEN: Record<Kartenstil, Record<Metall, Palette>> = {
+  ultimate: {
+    bronze: { verlauf: ['#7a4c22', '#d9a06a', '#a86b38', '#e3b07c', '#7a4c22'], schrift: F.tinte, rahmen: F.tinte, akzent: F.tinte },
+    silber: { verlauf: ['#7f868e', '#f3f5f7', '#b3b9c0', '#f3f5f7', '#7f868e'], schrift: F.tinte, rahmen: F.tinte, akzent: F.tinte },
+    gold: { verlauf: ['#a87a06', '#ffe27a', '#d9a72c', '#fff0a8', '#a87a06'], schrift: F.tinte, rahmen: F.tinte, akzent: F.tinte },
+    schwarz: { verlauf: ['#0b0b0a', '#3d3c38', '#1d1d1b', '#34332f', '#0b0b0a'], schrift: F.papier, rahmen: F.gelb, akzent: F.gelb },
+  },
+  magic: {
+    bronze: { verlauf: ['#141416', '#4d4f55', '#2a2b2e', '#45474c', '#141416'], schrift: F.papier, rahmen: '#c8c8c8', akzent: '#e8e8e8' },
+    silber: { verlauf: ['#5d7183', '#dde7f0', '#9db1c3', '#eaf1f7', '#5d7183'], schrift: F.tinte, rahmen: '#2f3b47', akzent: '#2f3b47' },
+    gold: { verlauf: ['#7f5f16', '#f1d98a', '#c39b3a', '#f9e7ad', '#7f5f16'], schrift: F.tinte, rahmen: '#4a3608', akzent: '#4a3608' },
+    schwarz: { verlauf: ['#7a220b', '#f6a25a', '#d24f1e', '#ffbf7c', '#7a220b'], schrift: F.tinte, rahmen: '#3d1004', akzent: '#3d1004' },
+  },
 };
 
-/** Verlauf je Metall (dunkel – hell – mittel – hell – dunkel ergibt den Schimmer), Schrift- und Rahmenfarbe. */
-const METALL: Record<Metall, { verlauf: [string, string, string, string, string]; schrift: string; rahmen: string; akzent: string }> = {
-  bronze: { verlauf: ['#7a4c22', '#d9a06a', '#a86b38', '#e3b07c', '#7a4c22'], schrift: F.tinte, rahmen: F.tinte, akzent: F.tinte },
-  silber: { verlauf: ['#7f868e', '#f3f5f7', '#b3b9c0', '#f3f5f7', '#7f868e'], schrift: F.tinte, rahmen: F.tinte, akzent: F.tinte },
-  gold: { verlauf: ['#a87a06', '#ffe27a', '#d9a72c', '#fff0a8', '#a87a06'], schrift: F.tinte, rahmen: F.tinte, akzent: F.tinte },
-  schwarz: { verlauf: ['#0b0b0a', '#3d3c38', '#1d1d1b', '#34332f', '#0b0b0a'], schrift: F.papier, rahmen: F.gelb, akzent: F.gelb },
-};
+/** Stufen-Name auf der Karte im aktuellen Stil */
+export const metallName = (stil: Kartenstil, stufe: Stufe) => STUFE_NAME[stil][stufe].karte;
 const REGENBOGEN = ['#e86435', '#eecb33', '#367d47', '#2f6db5', '#7a226f', '#dd2a4b'] as const;
 
 export interface KartenInhalt {
@@ -54,8 +66,10 @@ export interface KartenInhalt {
 }
 
 export function BuchKarte({ inhalt, breite, bewegung }: { inhalt: KartenInhalt; breite: number; bewegung: boolean }) {
+  const stil = useKartenstil();
   const metall = METALL_FUER[inhalt.stufe];
-  const m = METALL[metall];
+  const m = PALETTEN[stil][metall];
+  // Oberste Stufe (Schwarz bzw. Mythic) bekommt Holo-Regenbogen und schnelleren Glanz
   const schwarz = metall === 'schwarz';
   const glanz = useRef(new Animated.Value(0)).current;
 
@@ -107,7 +121,7 @@ export function BuchKarte({ inhalt, breite, bewegung }: { inhalt: KartenInhalt; 
             <Text style={[st.cent, { color: m.schrift }]}>{cent}</Text>
           </Text>
           <Text style={[st.einheit, { color: m.schrift }]}>EURO</Text>
-          <Text style={[st.stufe, { color: m.akzent }]}>{METALL_NAME[metall]}</Text>
+          <Text style={[st.stufe, { color: m.akzent }]}>{metallName(stil, inhalt.stufe)}</Text>
           {inhalt.ort ? <Text style={[st.ort, { color: m.schrift }]}>{inhalt.ort}</Text> : null}
           {inhalt.pruefen ? <Text style={[st.ort, { color: m.schrift }]}>· prüfen</Text> : null}
         </View>
