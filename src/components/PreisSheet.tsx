@@ -19,6 +19,8 @@ import { parseZahl, zahlText } from '../einstellungen';
 import { BEREICH, F, hell, KATEGORIE_FARBE, ABSTAND, SCHRIFT, schatten, ZUSTAND_FARBE } from '../theme';
 import { Abschnitt, Chip, Genres, Icon, KategorieBadge, Knopf, MERKMAL_ICON, Schritt, Stepper } from './Teile';
 import { Rechnung } from './Rechnung';
+import { BuchAktionen } from './BuchAktionen';
+import { HavenZugang } from '../lib/haven';
 import { Cover } from './Cover';
 import { Funkeln, HoloGlanz, SchimmerText, SeltenheitsInfo, STUFE_FARBE, StufenBadge, useBewegung } from './Glanz';
 import { SeltenheitsRegeln } from '../lib/seltenheit';
@@ -48,6 +50,8 @@ interface Props {
   regeln: PreisRegeln;
   seltenheitRegeln: SeltenheitsRegeln;
   links: LinkVorlage[];
+  /** Haven-Zugang für „An Haven“ (leer = Knopf erklärt die Einrichtung) */
+  haven?: HavenZugang;
   onSpeichern: (d: AuspreisDaten) => void;
   onVerwerfen: () => void;
 }
@@ -176,6 +180,14 @@ export function PreisSheet(p: Props) {
             <View style={{ marginTop: 6 }}>
               <Genres sachgruppen={t.sachgruppen} />
             </View>
+            <BuchAktionen
+              haven={p.haven}
+              buch={{
+                isbn: t.isbn, titel: t.titel, autoren: t.autoren, verlag: t.verlag, jahr: t.jahr, einband: t.einband,
+                neupreis: neupreis ?? undefined, preis: endpreis, kategorie: ergebnis?.kategorie, zustand,
+                stufe: seltenheit?.stufe, vergleich: ergebnis?.vergleichspreis ?? null, angebote: markt?.lage.anzahl ?? null,
+              }}
+            />
           </View>
         </View>
         {seltenheit && seltenheit.stufe !== 'gewoehnlich' && (

@@ -182,6 +182,18 @@ export function EinstellungenScreen({ einst, onGespeichert, onEinfuehrung }: Pro
           <ZahlFeld label="Keine Knappheit bei Neuerscheinungen der letzten … Jahre" schritt={1} max={30} wert={r.knappheit.neuBisJahre} setze={(v) => setK({ neuBisJahre: Math.round(v) })} />
         </Abschnitt>
 
+        <Abschnitt titel="Haven" icon="cellphone-arrow-down" farbe={F.blau}>
+          <Text style={st.klein}>
+            „An Haven“ im Preis-Blatt und im Stapel schickt das Buch an Haven – dort erscheint es oben beim Handy-Symbol.
+            Den Geräte-Schlüssel gibt Haven für dieses Handy aus.
+          </Text>
+          <Feld label="Haven-Adresse (z. B. https://haven…)" wert={e.haven.adresse} setze={(v) => setE({ ...e, haven: { ...e.haven, adresse: v.trim() } })} />
+          <Feld label="Geräte-Schlüssel" wert={e.haven.schluessel} geheim setze={(v) => setE({ ...e, haven: { ...e.haven, schluessel: v.trim() } })} />
+          {!!e.haven.adresse && !/^https?:\/\//i.test(e.haven.adresse) && (
+            <Text style={[st.klein, { color: F.rot }]}>Die Adresse muss mit http:// oder https:// beginnen.</Text>
+          )}
+        </Abschnitt>
+
         <Abschnitt titel="Vergleich absichern" icon="check-circle" farbe={F.gruen}>
           <Text style={st.klein}>
             Ein einzelnes falsches Angebot ganz unten soll nicht den Preis bestimmen. Mängelexemplare, Hörbücher, Sets, nur Umschläge,
@@ -388,7 +400,7 @@ export function EinstellungenScreen({ einst, onGespeichert, onEinfuehrung }: Pro
               {
                 text: 'Zurücksetzen',
                 onPress: () =>
-                  speichern({ ...STANDARD_EINSTELLUNGEN, booklooker: e.booklooker, eurobuch: e.eurobuch, ebay: e.ebay, ki: e.ki, googleBooksKey: e.googleBooksKey }),
+                  speichern({ ...STANDARD_EINSTELLUNGEN, booklooker: e.booklooker, eurobuch: e.eurobuch, ebay: e.ebay, ki: e.ki, googleBooksKey: e.googleBooksKey, haven: e.haven }),
               },
             ])
           }

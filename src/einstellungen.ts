@@ -3,6 +3,7 @@ import { LinkVorlage, STANDARD_LINKS } from './lib/links';
 import { KiEinstellungen, STANDARD_KI } from './lib/ki';
 import { EurobuchZugang } from './lib/quellen/eurobuch';
 import { EbayZugang } from './lib/quellen/ebay';
+import { HavenZugang } from './lib/haven';
 import { BooklookerZugang } from './lib/quellen/booklooker';
 import { SeltenheitsRegeln, STANDARD_SELTENHEIT } from './lib/seltenheit';
 
@@ -21,6 +22,8 @@ export interface Einstellungen {
   schnellmodus: boolean;
   /** Google-Books-Schlüssel für Cover; ohne geht's auch, fällt aber oft wegen des geteilten Tageslimits aus */
   googleBooksKey: string;
+  /** Bücher vom Handy an Haven schicken (Adresse + Geräte-Schlüssel aus Haven) */
+  haven: HavenZugang;
   /** Seltenheitsstufen, Glitzer-Effekte, Fehlalarm-Schutz */
   seltenheit: SeltenheitsRegeln;
 }
@@ -39,6 +42,7 @@ export const STANDARD_EINSTELLUNGEN: Einstellungen = {
   trendAktiv: true,
   schnellmodus: true,
   googleBooksKey: '',
+  haven: { adresse: '', schluessel: '' },
   seltenheit: STANDARD_SELTENHEIT,
 };
 
@@ -128,6 +132,7 @@ export function mitStandards(gespeichert: Partial<Einstellungen> | null): Einste
     trendAktiv: s.trendAktiv ?? d.trendAktiv,
     schnellmodus: s.schnellmodus ?? d.schnellmodus,
     googleBooksKey: s.googleBooksKey ?? d.googleBooksKey,
+    haven: { ...d.haven, ...s.haven },
     seltenheit: {
       ...d.seltenheit,
       ...s.seltenheit,

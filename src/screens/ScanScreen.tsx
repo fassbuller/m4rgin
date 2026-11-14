@@ -486,6 +486,7 @@ export function ScanScreen({ aktiv, einst, stapel, onStapelGeaendert, onZumStape
           regeln={einst.regeln}
           seltenheitRegeln={einst.seltenheit}
           links={einst.links}
+          haven={einst.haven}
           onSpeichern={speichern}
           onVerwerfen={() => {
             setSheetOffen(false);

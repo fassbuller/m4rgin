@@ -11,6 +11,7 @@ const GEHEIM = {
   ebaySecret: (e: Einstellungen) => e.ebay.clientSecret,
   kiSchluessel: (e: Einstellungen) => e.ki.apiKey,
   googleSchluessel: (e: Einstellungen) => e.googleBooksKey,
+  havenSchluessel: (e: Einstellungen) => e.haven.schluessel,
 } as const;
 type GeheimName = keyof typeof GEHEIM;
 
@@ -26,6 +27,7 @@ export function ohneGeheimnisse(e: Einstellungen): Einstellungen {
     ebay: { ...e.ebay, clientSecret: '' },
     ki: { ...e.ki, apiKey: '' },
     googleBooksKey: '',
+    haven: { ...e.haven, schluessel: '' },
   };
 }
 
@@ -45,6 +47,7 @@ export async function mitGeheimnissen(e: Einstellungen): Promise<Einstellungen> 
     ebay: { ...e.ebay, clientSecret: await lies('ebaySecret', e.ebay.clientSecret) },
     ki: { ...e.ki, apiKey: await lies('kiSchluessel', e.ki.apiKey) },
     googleBooksKey: await lies('googleSchluessel', e.googleBooksKey),
+    haven: { ...e.haven, schluessel: await lies('havenSchluessel', e.haven?.schluessel ?? '') },
   };
 }
 

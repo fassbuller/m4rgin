@@ -19,6 +19,7 @@ import { BEREICH, F, hell, KATEGORIE_FARBE, ABSTAND, SCHRIFT, schatten, ZUSTAND_
 import { Abschnitt, Chip, Genres, Icon, KategorieBadge, Knopf, Schritt, Stepper } from './Teile';
 import { Rechnung } from './Rechnung';
 import { Cover } from './Cover';
+import { BuchAktionen } from './BuchAktionen';
 import { Feier } from './Feier';
 import { Seltenheit } from '../lib/seltenheit';
 import { Funkeln, HoloGlanz, SchimmerText, SeltenheitsInfo, STUFE_FARBE, StufenBadge, useBewegung } from './Glanz';
@@ -258,6 +259,23 @@ export function StapelDetail({ eintrag, regeln, einst, onSchliessen, onGespeiche
             <View style={{ marginTop: 6 }}>
               <Genres sachgruppen={titel.sachgruppen} />
             </View>
+            <BuchAktionen
+              haven={einst.haven}
+              buch={{
+                isbn: eintrag.isbn ?? undefined,
+                titel: eintrag.titel ?? eintrag.suchbegriff,
+                autoren: eintrag.autor ? eintrag.autor.split(';').map((a) => a.trim()) : [],
+                verlag: eintrag.verlag ?? undefined,
+                jahr: eintrag.jahr ?? undefined,
+                neupreis: neupreis ?? undefined,
+                preis: endpreis ?? eintrag.endpreis,
+                kategorie: ergebnis?.kategorie ?? eintrag.kategorie ?? undefined,
+                zustand,
+                stufe: seltenheit?.stufe,
+                vergleich: eintrag.vergleichspreis,
+                angebote: eintrag.markt_anzahl,
+              }}
+            />
           </View>
           <Pressable onPress={onSchliessen} hitSlop={12} style={st.schliessen}>
             <Icon name="close" size={24} farbe={F.grau} />

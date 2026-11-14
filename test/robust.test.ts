@@ -409,3 +409,41 @@ test('booklooker live-Form: returnValue ist JSON-Text, Edition = Einband, Format
   assert.ok(!a[0].zustandText?.includes('mm'));
   assert.deepEqual(parseBooklookerAntwort('[]', 3), []);
 });
+
+test('Haven: Bereitschaft, URL, Teilen-Text und Senden mit Geräte-Schlüssel', async () => {
+  const { havenBereit, havenUrl, teilenText, havenPayload, anHavenSenden } = await import('../src/lib/haven');
+  assert.equal(havenBereit({ adresse: '', schluessel: 'x' }), false);
+  assert.equal(havenBereit({ adresse: 'haven.local', schluessel: 'x' }), false);
+  assert.equal(havenBereit({ adresse: 'https://haven.example', schluessel: '' }), false);
+  const z = { adresse: 'https://haven.example/', schluessel: 'geraet-123' };
+  assert.equal(havenBereit(z), true);
+  assert.equal(havenUrl(z), 'https://haven.example/api/m4rgin/eingang');
+
+  const buch = { isbn: '9783499256356', titel: 'Tschick', autoren: ['Herrndorf, Wolfgang'], verlag: 'Rowohlt', jahr: '2012', preis: 4.5 };
+  const text = teilenText(buch);
+  assert.ok(text.startsWith('Tschick\nHerrndorf, Wolfgang · Rowohlt · 2012\nISBN 9783499256356\nm4rgin-Preis: 4,50 €'));
+
+  const p = havenPayload(buch, 'm4rgin 0.1.0 · Stand test', new Date('2026-11-14T10:00:00Z'));
+  assert.deepEqual([p.quelle, p.gesendet, p.isbn], ['m4rgin', '2026-11-14T10:00:00.000Z', '9783499256356']);
+
+  const alt = globalThis.fetch;
+  const gesehen: { url: string; init?: RequestInit }[] = [];
+  let antwort = 201;
+  globalThis.fetch = (async (u: string, init?: RequestInit) => {
+    gesehen.push({ url: String(u), init });
+    return new Response('{}', { status: antwort });
+  }) as typeof fetch;
+  try {
+    await anHavenSenden(z, p);
+    assert.equal(gesehen[0].url, 'https://haven.example/api/m4rgin/eingang');
+    assert.equal(gesehen[0].init?.method, 'POST');
+    assert.equal((gesehen[0].init?.headers as Record<string, string>).Authorization, 'Bearer geraet-123');
+    assert.equal(JSON.parse(String(gesehen[0].init?.body)).titel, 'Tschick');
+    antwort = 401;
+    await assert.rejects(anHavenSenden(z, p), /Geräte-Schlüssel/);
+    antwort = 404;
+    await assert.rejects(anHavenSenden(z, p), /keinen Empfang/);
+  } finally {
+    globalThis.fetch = alt;
+  }
+});
