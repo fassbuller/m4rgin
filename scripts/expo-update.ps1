@@ -54,7 +54,10 @@ $ok = $false
 for ($versuch = 1; $versuch -le 3 -and -not $ok; $versuch++) {
     if ($versuch -gt 1) { Write-Host "=== eas hing - Versuch $versuch von 3 ===" -ForegroundColor Yellow }
     $p = Start-Process -FilePath "npx.cmd" -ArgumentList $argumente -NoNewWindow -PassThru
+    # Handle sofort abfragen – sonst liefert PowerShell 5.1 nach dem Ende einen leeren ExitCode
+    $null = $p.Handle
     if ($p.WaitForExit($limitMinuten * 60 * 1000)) {
+        $p.WaitForExit()  # Ausgabe-Puffer leeren und ExitCode sicher setzen
         if ($p.ExitCode -ne 0) { throw "eas update fehlgeschlagen (Exit-Code $($p.ExitCode))." }
         $ok = $true
     } else {
