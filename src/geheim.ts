@@ -6,6 +6,7 @@ import { Einstellungen } from './einstellungen';
 
 /** Welche Felder geheim sind – Pfad im Einstellungs-Objekt. */
 const GEHEIM = {
+  booklookerSchluessel: (e: Einstellungen) => e.booklooker.apiKey,
   eurobuchPasswort: (e: Einstellungen) => e.eurobuch.passwort,
   ebaySecret: (e: Einstellungen) => e.ebay.clientSecret,
   kiSchluessel: (e: Einstellungen) => e.ki.apiKey,
@@ -20,6 +21,7 @@ const schluessel = (n: GeheimName) => `bleistift.${n}`;
 export function ohneGeheimnisse(e: Einstellungen): Einstellungen {
   return {
     ...e,
+    booklooker: { ...e.booklooker, apiKey: '' },
     eurobuch: { ...e.eurobuch, passwort: '' },
     ebay: { ...e.ebay, clientSecret: '' },
     ki: { ...e.ki, apiKey: '' },
@@ -38,6 +40,7 @@ export async function mitGeheimnissen(e: Einstellungen): Promise<Einstellungen> 
   };
   return {
     ...e,
+    booklooker: { ...e.booklooker, apiKey: await lies('booklookerSchluessel', e.booklooker.apiKey ?? '') },
     eurobuch: { ...e.eurobuch, passwort: await lies('eurobuchPasswort', e.eurobuch.passwort) },
     ebay: { ...e.ebay, clientSecret: await lies('ebaySecret', e.ebay.clientSecret) },
     ki: { ...e.ki, apiKey: await lies('kiSchluessel', e.ki.apiKey) },

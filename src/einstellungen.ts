@@ -29,7 +29,7 @@ export const STANDARD_EINSTELLUNGEN: Einstellungen = {
   regeln: STANDARD_REGELN,
   links: STANDARD_LINKS,
   ki: STANDARD_KI,
-  booklooker: { aktiv: true, pid: '' }, // Partner-ID bei booklooker beantragen
+  booklooker: { aktiv: true, apiKey: '' }, // persönlicher API-Key aus dem booklooker-Konto (/app/priv/api_key.php)
   // Testzugang laut eurobuch-Doku – liefert echte Daten, aber ohne Provision; echten Zugang beantragen
   // Kein fest eingebauter Testzugang mehr (der wird gedrosselt) – echten Partnerzugang eintragen
   eurobuch: { aktiv: true, benutzer: '', passwort: '' },

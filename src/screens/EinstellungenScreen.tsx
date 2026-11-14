@@ -86,7 +86,10 @@ export function EinstellungenScreen({ einst, onGespeichert, onEinfuehrung }: Pro
         <Text selectable style={[st.klein, { textAlign: 'center', marginBottom: 8 }]}>{VERSION_TEXT}</Text>
         <Abschnitt titel="Preisquellen" icon="store-search" farbe={F.blau}>
           <Schalter label="booklooker" wert={e.booklooker.aktiv} setze={(v) => setE({ ...e, booklooker: { ...e.booklooker, aktiv: v } })} />
-          <Feld label="Partner-ID (pid)" wert={e.booklooker.pid} setze={(v) => setE({ ...e, booklooker: { ...e.booklooker, pid: v.trim() } })} />
+          <Feld label="API-Key" wert={e.booklooker.apiKey} geheim setze={(v) => setE({ ...e, booklooker: { ...e.booklooker, apiKey: v.trim() } })} />
+          {!e.booklooker.apiKey && (
+            <Text style={st.klein}>Den API-Key gibt es im booklooker-Konto unter „Mein Depot“ → API-Key (booklooker.de/app/priv/api_key.php).</Text>
+          )}
           <Schalter label="eurobuch" wert={e.eurobuch.aktiv} setze={(v) => setE({ ...e, eurobuch: { ...e.eurobuch, aktiv: v } })} />
           <Feld label="Benutzer" wert={e.eurobuch.benutzer} setze={(v) => setE({ ...e, eurobuch: { ...e.eurobuch, benutzer: v.trim() } })} />
           {e.eurobuch.benutzer === 'test' && (

@@ -334,3 +334,47 @@ test('eurobuch spart Kontingent: keine ISBN-10-Nachfrage, mit ISBN nie zusätzli
   }
   assert.ok(eurobuchUrl({ aktiv: true, benutzer: 'x', passwort: 'y' }, { titel: 'Venedig' }).includes('title=Venedig'));
 });
+
+test('booklooker REST: Anmeldung, Suche, JSON-Artikel, Token erneuern, Kontingent', async () => {
+  const { booklookerQuelle, parseBooklookerAntwort } = await import('../src/lib/quellen/booklooker');
+  // JSON-Artikel generisch lesen (Feldnamen wie im alten XML, Groß-/Kleinschreibung egal)
+  const a = parseBooklookerAntwort(
+    [
+      { Title: 'Tschick', Author: 'Herrndorf, Wolfgang', Price: '3,50', ShippingPrice: '2,80', Condition: 'gut', SellerType: '1', Format: 'Taschenbuch', DetailLinkUrl: 'https://www.booklooker.de/a/1' },
+      { title: 'Tschick', price: 2 },
+      { title: 'ohne Preis' },
+    ],
+    3,
+  );
+  assert.deepEqual(a.map((x) => [x.gesamt, x.versandGeschaetzt, x.gebunden]), [[6.3, false, false], [5, true, undefined]]);
+  assert.equal(a[0].url, 'https://www.booklooker.de/a/1');
+
+  const alt = globalThis.fetch;
+  const urls: string[] = [];
+  let tokenNr = 0;
+  let suchen = 0;
+  globalThis.fetch = (async (u: string, init?: RequestInit) => {
+    urls.push(`${init?.method ?? 'GET'} ${u}`);
+    if (String(u).includes('/authenticate')) return new Response(JSON.stringify({ status: 'OK', returnValue: `tok${++tokenNr}` }));
+    suchen++;
+    if (suchen === 1) return new Response(JSON.stringify({ status: 'NOK', returnValue: 'TOKEN_EXPIRED' }));
+    if (suchen === 2) return new Response(JSON.stringify({ status: 'OK', returnValue: [{ title: 'Tschick', price: '4.00', shippingPrice: '1.00' }] }));
+    return new Response(JSON.stringify({ status: 'NOK', returnValue: 'QUOTA_EXCEEDED' }));
+  }) as typeof fetch;
+  try {
+    const q = booklookerQuelle({ aktiv: true, apiKey: 'key-test-1' }, 3);
+    assert.equal(q.isbn10Nachfrage, false);
+    const r = await q.suche({ isbn: '9783499256356' });
+    assert.deepEqual(r.map((x) => x.gesamt), [5]);
+    assert.ok(urls[0].startsWith('POST https://api.booklooker.de/2.0/authenticate?apiKey=key-test-1'));
+    assert.ok(urls.some((u) => u.includes('/2.0/search?token=tok2') && u.includes('isbn=9783499256356')));
+    // Kontingent erschöpft → Ausfall „gesperrt“, kein zweiter Versuch
+    const m = await marktAbfragen([q], { isbn: '9783499256356' }, { wiederholenNachMs: 1 });
+    assert.equal(m.status[0].ok, false);
+    assert.equal(m.status[0].versuche, 1);
+    const { kurzerFehler } = await import('../src/lib/markt');
+    assert.equal(kurzerFehler(m.status[0].fehler), 'gesperrt');
+  } finally {
+    globalThis.fetch = alt;
+  }
+});

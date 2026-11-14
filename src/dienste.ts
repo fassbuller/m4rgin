@@ -4,9 +4,9 @@ import { Titel } from './lib/titel';
 import { dnbIsbn, dnbSuche } from './lib/dnb';
 import { openLibraryIsbn } from './lib/openlibrary';
 import { baueCql, SuchFelder } from './lib/suche';
-import { MarktErgebnis, marktAbfragen, mitTimeout, vollstaendig } from './lib/markt';
+import { kurzerFehler, MarktErgebnis, marktAbfragen, mitTimeout, vollstaendig } from './lib/markt';
 import { eurobuchAbgelehnt, eurobuchQuelle, eurobuchUrl, parseEurobuch } from './lib/quellen/eurobuch';
-import { booklookerQuelle, booklookerUrl, parseBooklooker } from './lib/quellen/booklooker';
+import { booklookerQuelle, booklookerRoh, booklookerToken, parseBooklookerAntwort } from './lib/quellen/booklooker';
 import { VERSION_TEXT } from './version';
 import { appToken, ebayQuelle } from './lib/quellen/ebay';
 import { angebotsSignal, interesseSignal, neuauflageSignal, Signal } from './lib/trend';
@@ -188,9 +188,20 @@ export async function quellenTesten(e: Einstellungen, isbn = '9783499256356'): P
       teile.push(`■ ${name}: Fehler nach ${sek(t0)}: ${String(err)}${aus(an)}`);
     }
   };
-  if (e.booklooker.pid) {
-    await roh('booklooker', booklookerUrl(e.booklooker, { isbn }), (x) => parseBooklooker(x, 0).length, e.booklooker.aktiv);
-  } else teile.push('■ booklooker: keine Partner-ID eingetragen');
+  if (e.booklooker.apiKey) {
+    // REST API: erst Anmeldung (Token), dann Suche – Rohantwort zeigen, damit man die Feldnamen sieht
+    let t0 = Date.now();
+    try {
+      await mitTimeout(booklookerToken(e.booklooker, true), 15000);
+      teile.push(`■ booklooker-Anmeldung: ok (${sek(t0)})`);
+      t0 = Date.now();
+      const rv = await mitTimeout(booklookerRoh(e.booklooker, { isbn }), 15000);
+      const n = parseBooklookerAntwort(rv, 0).length;
+      teile.push(`■ booklooker-Suche: ${n} Angebote erkannt (${sek(t0)})${aus(e.booklooker.aktiv)}\n${JSON.stringify(rv).slice(0, 1500)}`);
+    } catch (err) {
+      teile.push(`■ booklooker: ${kurzerFehler(String(err))} nach ${sek(t0)}: ${String(err)}${aus(e.booklooker.aktiv)}`);
+    }
+  } else teile.push('■ booklooker: kein API-Key eingetragen');
   if (e.eurobuch.benutzer) {
     await roh('eurobuch', eurobuchUrl(e.eurobuch, { isbn }), (x) => parseEurobuch(x, 0).length, e.eurobuch.aktiv, eurobuchAbgelehnt);
   } else teile.push('■ eurobuch: kein Zugang eingetragen');
