@@ -32,7 +32,9 @@
         "android.permission.CAMERA",
         "android.permission.VIBRATE"
       ],
-      "blockedPermissions": ["android.permission.RECORD_AUDIO"]
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "plugins": [
       [
@@ -44,6 +46,14 @@
       ],
       "expo-sqlite",
       "./plugins/cmake-neu.js",
+      [
+        "./plugins/haven-klartext.js",
+        {
+          "hosts": [
+            "100.73.19.78"
+          ]
+        }
+      ],
       [
         "expo-splash-screen",
         {

@@ -187,10 +187,13 @@ export function EinstellungenScreen({ einst, onGespeichert, onEinfuehrung }: Pro
             „An Haven“ im Preis-Blatt und im Stapel schickt das Buch an Haven – dort erscheint es oben beim Handy-Symbol.
             Adresse und Geräte-Schlüssel (beginnt mit m4g_) zeigt Haven einmal an: Administration → Verwaltung → „Geräte (m4rgin)“ → Gerät hinzufügen.
           </Text>
-          <Feld label="Haven-Adresse (z. B. https://haven…)" wert={e.haven.adresse} setze={(v) => setE({ ...e, haven: { ...e.haven, adresse: v.trim() } })} />
+          <Feld label="Haven-Adresse (über Tailscale: http://100.73.19.78:5002)" wert={e.haven.adresse} setze={(v) => setE({ ...e, haven: { ...e.haven, adresse: v.trim() } })} />
           <Feld label="Geräte-Schlüssel" wert={e.haven.schluessel} geheim setze={(v) => setE({ ...e, haven: { ...e.haven, schluessel: v.trim() } })} />
           {!!e.haven.adresse && !/^https?:\/\//i.test(e.haven.adresse) && (
             <Text style={[st.klein, { color: F.rot }]}>Die Adresse muss mit http:// oder https:// beginnen.</Text>
+          )}
+          {/^http:\/\/100\./.test(e.haven.adresse) && (
+            <Text style={st.klein}>Tailscale-Adresse: Das Handy muss in der Tailscale-App mit Lennys Konto verbunden sein.</Text>
           )}
         </Abschnitt>
 
