@@ -44,8 +44,27 @@ $commit = (git rev-parse --short HEAD)
 if (git status --porcelain --untracked-files=no) { $commit = "$commit+" }
 $env:EXPO_PUBLIC_STAND = "$commit vom $(Get-Date -Format 'dd.MM. HH:mm')"
 Write-Host "Stand: $env:EXPO_PUBLIC_STAND" -ForegroundColor Cyan
-npx --yes eas-cli@latest update --channel $Kanal --environment preview --message "$Nachricht" --platform all --non-interactive
-if ($LASTEXITCODE -ne 0) { throw "eas update fehlgeschlagen." }
+# Wächter: eas update bleibt hier gelegentlich gleich zu Beginn minutenlang ohne Ausgabe hängen (der zweite
+# Versuch lief bisher immer durch). Darum mit Zeitlimit starten und bei Hänger selbst neu versuchen –
+# der Token bleibt in diesem Fenster, er muss nicht neu eingegeben werden.
+$nachrichtArg = $Nachricht.Replace('"', "'")
+$argumente = "--yes eas-cli@latest update --channel $Kanal --environment preview --message `"$nachrichtArg`" --platform all --non-interactive"
+$limitMinuten = 4
+$ok = $false
+for ($versuch = 1; $versuch -le 3 -and -not $ok; $versuch++) {
+    if ($versuch -gt 1) { Write-Host "=== eas hing - Versuch $versuch von 3 ===" -ForegroundColor Yellow }
+    $p = Start-Process -FilePath "npx.cmd" -ArgumentList $argumente -NoNewWindow -PassThru
+    if ($p.WaitForExit($limitMinuten * 60 * 1000)) {
+        if ($p.ExitCode -ne 0) { throw "eas update fehlgeschlagen (Exit-Code $($p.ExitCode))." }
+        $ok = $true
+    } else {
+        # Ganzen Prozessbaum beenden (npx startet eas als Kindprozess)
+        & taskkill.exe /T /F /PID $p.Id | Out-Null
+        Write-Host ""
+        Write-Host "eas update hat nach $limitMinuten Minuten nicht geantwortet - abgebrochen." -ForegroundColor Yellow
+    }
+}
+if (-not $ok) { throw "eas update hing dreimal - spaeter erneut versuchen." }
 
 $sdk = ($app.expo.sdkVersion, (node -p "require('expo/package.json').version.split('.')[0] + '.0.0'") | Where-Object { $_ } | Select-Object -First 1)
 $laufzeit = "exposdk:$sdk"
