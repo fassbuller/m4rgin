@@ -399,10 +399,10 @@ test('booklooker live-Form: returnValue ist JSON-Text, Edition = Einband, Format
   const a = parseBooklookerAntwort(rv, 3);
   assert.equal(a.length, 2);
   assert.deepEqual(
-    a.map((x) => [x.gesamt, x.versandGeschaetzt, x.gebunden, x.neu, x.haendler, x.land, x.jahr]),
+    a.map((x) => [x.gesamt, x.versandGeschaetzt, x.gebunden, x.neu, x.haendler, x.land, x.jahr, x.verkaeuferTyp]),
     [
-      [26, false, false, true, undefined, 'DE', '2023'],
-      [16.45, false, true, undefined, 'Antiquariat Muster', 'AT', '2023'],
+      [26, false, false, true, undefined, 'DE', '2023', 'gewerblich'],
+      [16.45, false, true, undefined, 'Antiquariat Muster', 'AT', '2023', 'privat'],
     ],
   );
   assert.equal(a[0].zustandText, 'Neuware · Taschenbuch · Originalausgabe');

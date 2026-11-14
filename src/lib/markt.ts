@@ -28,6 +28,8 @@ export interface Angebot {
   autor?: string;
   /** Neubuch eines Händlers (Amazon, Thalia …) → Buch ist noch lieferbar */
   neu?: boolean;
+  /** Verkäuferart, wenn die Quelle sie nennt (booklooker: SellerType 0 = privat, 1 = gewerblich); sonst leer */
+  verkaeuferTyp?: 'privat' | 'gewerblich';
 }
 
 export interface QuellenStatus {

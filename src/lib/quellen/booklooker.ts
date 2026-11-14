@@ -172,6 +172,7 @@ function angebotAus(o: Record<string, unknown>, versandPauschale: number): Angeb
     autor,
     gebunden: gebundenAus(einband ?? (/\bmm\b/.test(erstes(o, ['format']) ?? '') ? undefined : erstes(o, ['format']))),
     neu: neu || undefined,
+    verkaeuferTyp: sellerType === '0' ? 'privat' : sellerType === '1' ? 'gewerblich' : undefined,
   };
 }
 
