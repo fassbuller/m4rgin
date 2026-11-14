@@ -8,7 +8,7 @@ App für den Ladenbetrieb der Buchgenossenschaft Hennwack: Buch scannen → Tite
 2. **Während der Suche** steht das Buch unten, das Rädchen dreht sich bei der Preisabfrage.
 3. **Erkannt** → das Buch springt als **Karte** in die Mitte: Bronze (gewöhnlich), Silber (gefragt), Gold (selten), Schwarz (Rarität). Gold und Schwarz mit Enthüllung und Vibration. Karten neigen sich leicht mit dem Handy.
 4. **Antippen** = auspreisen (Zustand, Merkmale, Rechnung mit jedem Zu- und Abschlag) · **wegwischen** = weiter.
-5. **Stapel:** nach Grabbelkiste / Regal / Lager gruppiert, Gesamtwert, CSV-Export. Tablets: Scanner und Stapel nebeneinander („Theke“).
+5. **Stapel:** nach Bücherbox (1 €/2 €, auch von Hand gesenkte Preise) / Regal / Lager gruppiert oder nach Raum sortiert, Gesamtwert, CSV-Export. Tablets: Scanner und Stapel nebeneinander („Theke“).
 
 ## Preisquellen und Daten
 

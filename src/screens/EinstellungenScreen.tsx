@@ -113,7 +113,7 @@ export function EinstellungenScreen({ einst, onGespeichert, onEinfuehrung }: Pro
           titel="Laden-Regeln"
           icon="store"
           farbe={F.gruen}
-          hinweis="Für Grabbelkiste und Regal: das günstigste vergleichbare Angebot unterbieten, damit das Buch weggeht."
+          hinweis="Für Bücherbox und Regal: das günstigste vergleichbare Angebot unterbieten, damit das Buch weggeht."
           z={r.laden}
           setze={setZweig('laden')}
         />
@@ -353,7 +353,7 @@ export function EinstellungenScreen({ einst, onGespeichert, onEinfuehrung }: Pro
           <ZahlFeld label="Regal ab" einheit="€" schritt={0.5} wert={r.regalAb} setze={(v) => setR({ regalAb: v })} />
           <ZahlFeld label="Ins Lager ab (Ladenpreis)" einheit="€" schritt={1} wert={r.lagerAb} setze={(v) => setR({ lagerAb: v })} />
           <Feld
-            label="Grabbelkisten-Preise (€, mit ; getrennt)"
+            label="Bücherbox-Preise (€, mit ; getrennt)"
             wert={r.grabbelPreise.map(zahlText).join('; ')}
             setze={(v) => setR({ grabbelPreise: v.split(';').map((x) => parseZahl(x)).filter((x): x is number => x != null).sort((a, b) => a - b) })}
           />

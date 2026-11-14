@@ -26,7 +26,7 @@ export const BEREICHE: Record<BereichId, Bereich> = {
   sachbuch: { name: 'Sachbuch', farbe: '#E76535', ort: 'Mittelraum' },
   geist: { name: 'Geist & Gesellschaft', farbe: '#EDCB33', ort: 'Mittelraum · gelbe Wand' },
   vorderraum: { name: 'Vorderraum', farbe: '#378A4F', ort: 'Vorderraum · Kunst, Kinder, Lyrik' },
-  grabbel: { name: 'Grabbelkiste', farbe: '#7B4FD6', ort: '1–2 €-Kiste' },
+  grabbel: { name: 'Bücherbox', farbe: '#7B4FD6', ort: 'Bücherbox (1 €/2 €)' },
 };
 
 /**

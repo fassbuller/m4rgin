@@ -458,9 +458,25 @@ export async function stapelAbschliessen(id: number) {
   await d.runAsync('DELETE FROM stapel WHERE id = ?', id);
 }
 
-export async function endpreisAendern(id: number, endpreis: number) {
+/**
+ * Einmalig: Stapel-Bücher, die früher von Hand auf 1 €/2 € gesetzt wurden, aber noch unter Regal/Lager stehen,
+ * in die Bücherbox verschieben (seit der Kategorie dem Endpreis folgt). Läuft nur einmal (Merker).
+ */
+export async function altbestandInBuecherbox(regalAb: number): Promise<number> {
+  if (await merkerLaden('buecherbox-umzug')) return 0;
   const d = await db();
-  await d.runAsync('UPDATE log SET endpreis=? WHERE id=?', endpreis, id);
+  const r = await d.runAsync(
+    "UPDATE log SET kategorie='grabbel' WHERE stapel_id IS NOT NULL AND endpreis IS NOT NULL AND endpreis < ? AND kategorie IS NOT 'grabbel'",
+    regalAb - 0.001,
+  );
+  await merkerSpeichern('buecherbox-umzug', '1');
+  return r.changes;
+}
+
+export async function endpreisAendern(id: number, endpreis: number, kategorie?: Kategorie) {
+  const d = await db();
+  if (kategorie) await d.runAsync('UPDATE log SET endpreis=?, kategorie=? WHERE id=?', endpreis, kategorie, id);
+  else await d.runAsync('UPDATE log SET endpreis=? WHERE id=?', endpreis, id);
   // Auch spätere Änderungen im Stapel gehören ins Korrektur-Protokoll
   const e = await d.getFirstAsync<LogEintrag>('SELECT * FROM log WHERE id = ?', id);
   if (e?.vorschlag != null && Math.abs(e.vorschlag - endpreis) >= 0.005) {

@@ -25,7 +25,7 @@ const SEITEN: Seite[] = [
     punkte: [
       { icon: 'store-search', text: 'Fragt booklooker, eurobuch und eBay gleichzeitig nach Vergleichspreisen.' },
       { icon: 'calculator-variant', text: 'Rechnet nach euren Regeln – jeder Zu- und Abschlag steht sichtbar in der Rechnung.' },
-      { icon: 'bookshelf', text: 'Sagt, wohin das Buch gehört: Grabbelkiste, Regal (mit Fach) oder Lager.' },
+      { icon: 'bookshelf', text: 'Sagt, wohin das Buch gehört: Bücherbox (1 €/2 €), Regal (mit Raum) oder Lager.' },
     ],
   },
   {

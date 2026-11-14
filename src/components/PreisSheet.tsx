@@ -12,7 +12,7 @@ import { testfallAus } from '../lib/testfall';
 import { ignorierteHaendlerLaden, ignorierteHaendlerSpeichern } from '../db';
 import { Signal } from '../lib/trend';
 import {
-  berechnePreis, euro, Merkmal, MERKMAL_LABEL, PreisErgebnis, PreisRegeln, Zustand, ZUSTAND_BUCH, ZUSTAND_LABEL,
+  berechnePreis, euro, kategorieFuerEndpreis, Merkmal, MERKMAL_LABEL, PreisErgebnis, PreisRegeln, Zustand, ZUSTAND_BUCH, ZUSTAND_LABEL,
 } from '../lib/preis';
 import { LinkVorlage, vergleichsLink } from '../lib/links';
 import { parseZahl, zahlText } from '../einstellungen';
@@ -106,6 +106,8 @@ export function PreisSheet(p: Props) {
   );
   const anker = ergebnis?.anker ?? null;
   const endpreis = ergebnis ? Math.max(0.5, ergebnis.vorschlag + korrektur * p.regeln.raster) : null;
+  // Kategorie zum aktuellen Preis: von Hand auf 1 €/2 € → Bücherbox (und zurück)
+  const kategorie = ergebnis && endpreis != null ? kategorieFuerEndpreis(endpreis, ergebnis.kategorie, p.regeln) : ergebnis?.kategorie ?? null;
   const konfidenz = useMemo(
     () => bewerteKonfidenz({ markt, preis: ergebnis, vonHandGewaehlt: gewaehltesAngebot != null }),
     [markt, ergebnis, gewaehltesAngebot],
@@ -188,7 +190,7 @@ export function PreisSheet(p: Props) {
               haven={p.haven}
               buch={{
                 isbn: t.isbn, titel: t.titel, autoren: t.autoren, verlag: t.verlag, jahr: t.jahr, einband: t.einband,
-                neupreis: neupreis ?? undefined, preis: endpreis, kategorie: ergebnis?.kategorie, zustand,
+                neupreis: neupreis ?? undefined, preis: endpreis, kategorie: kategorie ?? undefined, zustand,
                 stufe: seltenheit?.stufe, vergleich: ergebnis?.vergleichspreis ?? null, angebote: markt?.lage.anzahl ?? null,
               }}
             />
@@ -214,9 +216,9 @@ export function PreisSheet(p: Props) {
         )}
 
         {/* Ladenplan: Wo steht es? (nicht für die Grabbelkiste) */}
-        {p.standort && ergebnis?.kategorie !== 'grabbel' && (
+        {p.standort && kategorie !== 'grabbel' && (
           <>
-            <Abschnitt titel={ergebnis?.kategorie === 'lager' ? 'Wo stünde es im Laden?' : 'Wo steht es?'} icon="map-marker" farbe={F.gruen} />
+            <Abschnitt titel={kategorie === 'lager' ? 'Wo stünde es im Laden?' : 'Wo steht es?'} icon="map-marker" farbe={F.gruen} />
             <StandortBlock s={p.standort} />
           </>
         )}
@@ -390,11 +392,11 @@ export function PreisSheet(p: Props) {
 
         {/* Ergebnis */}
         {ergebnis && endpreis != null ? (
-          <View style={[st.ergebnis, schatten(KATEGORIE_FARBE[ergebnis.kategorie], 6)]}>
+          <View style={[st.ergebnis, schatten(KATEGORIE_FARBE[kategorie ?? ergebnis.kategorie], 6)]}>
             <View style={st.ergebnisKopf}>
               <Icon name="pencil" size={18} farbe={F.grau} />
               <Text style={st.ergebnisTitel}>m4rgin-Preis</Text>
-              <KategorieBadge k={ergebnis.kategorie} gross />
+              <KategorieBadge k={kategorie ?? ergebnis.kategorie} gross />
             </View>
             <View style={st.stepper}>
               <Schritt gross onPress={() => setKorrektur((k) => k - 1)} />
@@ -402,7 +404,7 @@ export function PreisSheet(p: Props) {
               <Schritt gross plus onPress={() => setKorrektur((k) => k + 1)} />
             </View>
             <AmpelZeile k={konfidenz} />
-            <Rechnung schritte={ergebnis.schritte} notizen={ergebnis.notizen} farbe={KATEGORIE_FARBE[ergebnis.kategorie]} />
+            <Rechnung schritte={ergebnis.schritte} notizen={ergebnis.notizen} farbe={KATEGORIE_FARBE[kategorie ?? ergebnis.kategorie]} />
             {korrektur !== 0 && <Text style={st.erklaerung}>Von Hand {korrektur > 0 ? '+' : ''}{euro(korrektur * p.regeln.raster)}</Text>}
             {ergebnis.hinweise.map((h, i) => <Hinweis key={i} text={h} />)}
           </View>

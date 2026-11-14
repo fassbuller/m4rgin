@@ -13,7 +13,7 @@ import { texterkennen, texterkennungVerfuegbar } from '../lib/texterkennung';
 import { rueckmeldung } from '../lib/haptik';
 import { fehlerText } from '../lib/fehler';
 import { MarktErgebnis } from '../lib/markt';
-import { euro, KATEGORIE_LABEL, PreisErgebnis } from '../lib/preis';
+import { euro, KATEGORIE_LABEL, kategorieFuerEndpreis, PreisErgebnis } from '../lib/preis';
 import { Signal } from '../lib/trend';
 import { Einstellungen } from '../einstellungen';
 import { korrekturSpeichern, LogEintrag, logAuspreisen, logSuche, logVerworfen, Methode } from '../db';
@@ -333,7 +333,8 @@ export function ScanScreen({ aktiv, einst, stapel, onStapelGeaendert, onZumStape
       merkmale: d.merkmale,
       vorschlag: d.ergebnis.vorschlag,
       endpreis: d.endpreis,
-      kategorie: d.ergebnis.kategorie,
+      // Von Hand auf 1 €/2 € gesetzt → Bücherbox (und umgekehrt), siehe kategorieFuerEndpreis
+      kategorie: kategorieFuerEndpreis(d.endpreis, d.ergebnis.kategorie, einst.regeln),
       dauerMs: Date.now() - v.start,
       markt,
       anker: d.anker,
@@ -350,7 +351,7 @@ export function ScanScreen({ aktiv, einst, stapel, onStapelGeaendert, onZumStape
         vorschlag: d.ergebnis.vorschlag,
         endpreis: d.endpreis,
         zweig: d.ergebnis.zweig,
-        kategorie: d.ergebnis.kategorie,
+        kategorie: kategorieFuerEndpreis(d.endpreis, d.ergebnis.kategorie, einst.regeln),
         zustand: d.zustand,
         anzahl: markt?.lage.anzahl ?? null,
         ampel: d.konfidenz.ampel,

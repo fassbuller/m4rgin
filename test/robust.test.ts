@@ -449,3 +449,17 @@ test('Haven: Bereitschaft, URL, Teilen-Text und Senden mit Geräte-Schlüssel', 
     globalThis.fetch = alt;
   }
 });
+
+test('Bücherbox: Kategorie folgt dem Endpreis, auch bei Handkorrektur', async () => {
+  const { kategorieFuerEndpreis, KATEGORIE_LABEL, STANDARD_REGELN } = await import('../src/lib/preis');
+  const r = STANDARD_REGELN; // regalAb 2,50 · lagerAb 15
+  assert.equal(KATEGORIE_LABEL.grabbel, 'Bücherbox');
+  assert.equal(kategorieFuerEndpreis(2, 'regal', r), 'grabbel'); // von Hand auf 2 € gesenkt
+  assert.equal(kategorieFuerEndpreis(1, 'lager', r), 'grabbel');
+  assert.equal(kategorieFuerEndpreis(1.5, 'regal', r), 'grabbel');
+  assert.equal(kategorieFuerEndpreis(2.5, 'regal', r), 'regal');
+  assert.equal(kategorieFuerEndpreis(3, 'grabbel', r), 'regal'); // Bücherbox-Buch teurer gemacht
+  assert.equal(kategorieFuerEndpreis(16, 'grabbel', r), 'lager');
+  assert.equal(kategorieFuerEndpreis(16, 'regal', r), 'regal'); // Regal ↔ Lager entscheidet die Rechnung
+  assert.equal(kategorieFuerEndpreis(12, 'lager', r), 'lager');
+});

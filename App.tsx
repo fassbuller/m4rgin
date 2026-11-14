@@ -10,7 +10,7 @@ import { Einstellungen, mitStandards } from './src/einstellungen';
 import { Fangnetz } from './src/components/Fangnetz';
 import { fehlerText } from './src/lib/fehler';
 import { setzeKartenstil, useKartenstil } from './src/kartenstil';
-import { einstellungenLaden, LogEintrag, merkerLaden, merkerSpeichern, Stapel, stapelUebersicht } from './src/db';
+import { altbestandInBuecherbox, einstellungenLaden, LogEintrag, merkerLaden, merkerSpeichern, Stapel, stapelUebersicht } from './src/db';
 import { Einfuehrung } from './src/components/Einfuehrung';
 import { ScanScreen } from './src/screens/ScanScreen';
 import { StapelScreen } from './src/screens/StapelScreen';
@@ -118,6 +118,14 @@ function Hauptfenster() {
   useEffect(() => {
     if (einst) coverEinstellen(einst.googleBooksKey);
   }, [einst?.googleBooksKey]);
+
+  // Einmalig: von Hand auf 1 €/2 € gesetzte Stapel-Bücher in die Bücherbox (seit die Kategorie dem Preis folgt)
+  useEffect(() => {
+    if (!einst) return;
+    altbestandInBuecherbox(einst.regeln.regalAb)
+      .then((n) => n > 0 && stapelNeu())
+      .catch(() => undefined);
+  }, [!!einst]);
 
   // Fehlt eine Schrift (z. B. offline beim ersten Start), lieber mit Systemschrift weiter als hängen bleiben
   const bereit = !!einst && (schriftenDa || !!schriftFehler);

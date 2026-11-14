@@ -602,7 +602,7 @@ export function berechnePreis(e: PreisEingabe, r: PreisRegeln = STANDARD_REGELN)
       vorschlag = r.grabbelPreise.reduce((best, p) =>
         Math.abs(p - basis.rohwert) < Math.abs(best - basis.rohwert) ? p : best,
       );
-      schritte.push({ art: 'raster', label: `Grabbelkiste (unter ${euro(r.regalAb)})`, wert: euro(vorschlag) });
+      schritte.push({ art: 'raster', label: `Bücherbox (unter ${euro(r.regalAb)})`, wert: euro(vorschlag) });
     } else {
       kategorie = 'regal';
       vorschlag = Math.max(gerundet, r.regalAb);
@@ -630,11 +630,24 @@ export function berechnePreis(e: PreisEingabe, r: PreisRegeln = STANDARD_REGELN)
   };
 }
 
+// Intern heißt die günstigste Kategorie weiter „grabbel“ (gespeicherte Daten, CSV); angezeigt wird „Bücherbox“.
 export const KATEGORIE_LABEL: Record<Kategorie, string> = {
-  grabbel: 'Grabbelkiste',
+  grabbel: 'Bücherbox',
   regal: 'Regal',
   lager: 'Ins Lager',
 };
+
+/**
+ * Kategorie, die zum tatsächlichen Endpreis passt – auch wenn der Preis von Hand geändert wurde:
+ * - unter „Regal ab“ (also 1 €/2 €) → Bücherbox, egal was vorher berechnet war
+ * - ein Bücherbox-Buch, das von Hand teurer gemacht wurde → Regal (ab „Lager ab“: Lager)
+ * - sonst bleibt die berechnete Kategorie (Regal ↔ Lager entscheidet die Rechnung, nicht der Feinschliff)
+ */
+export function kategorieFuerEndpreis(endpreis: number, berechnet: Kategorie, r: Pick<PreisRegeln, 'regalAb' | 'lagerAb'>): Kategorie {
+  if (endpreis < r.regalAb - 0.001) return 'grabbel';
+  if (berechnet === 'grabbel') return endpreis >= r.lagerAb ? 'lager' : 'regal';
+  return berechnet;
+}
 
 export const ZWEIG_LABEL: Record<Zweig, string> = {
   laden: 'Laden-Regeln',

@@ -10,7 +10,7 @@ import {
   LogEintrag, Stapel, ausStapelEntfernen, endpreisAendern, exportCsv,
   stapelAbschliessen, stapelAktivieren, stapelAnlegen, stapelPausieren, stapelUmbenennen, stapelUebersicht,
 } from '../db';
-import { euro, Kategorie, KATEGORIE_LABEL, PreisRegeln, ZUSTAND_LABEL } from '../lib/preis';
+import { euro, Kategorie, KATEGORIE_LABEL, kategorieFuerEndpreis, PreisRegeln, ZUSTAND_LABEL } from '../lib/preis';
 import { BEREICHE, bereichFuerBuch, erstesFach } from '../lib/bereiche';
 import { LADENPLAN, raumVon } from '../lib/ladenplan';
 import { Einstellungen } from '../einstellungen';
@@ -118,10 +118,12 @@ export function StapelScreen({ regeln, einst, onGeaendert, version }: Props) {
 
   const preis = async (e: LogEintrag, delta: number) => {
     const neu = Math.max(0.5, (e.endpreis ?? 0) + delta * regeln.raster);
-    await endpreisAendern(e.id, neu);
+    // Auf 1 €/2 € gesenkt → Bücherbox; ein Bücherbox-Buch teurer gemacht → Regal
+    const kategorie = kategorieFuerEndpreis(neu, e.kategorie ?? 'regal', regeln);
+    await endpreisAendern(e.id, neu, kategorie);
     onGeaendert();
-    setEintraege((alt) => alt.map((x) => (x.id === e.id ? { ...x, endpreis: neu } : x)));
-    setSchnell((s) => (s && s.id === e.id ? { ...s, endpreis: neu } : s));
+    setEintraege((alt) => alt.map((x) => (x.id === e.id ? { ...x, endpreis: neu, kategorie } : x)));
+    setSchnell((s) => (s && s.id === e.id ? { ...s, endpreis: neu, kategorie } : s));
   };
 
   return (

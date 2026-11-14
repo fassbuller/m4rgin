@@ -58,7 +58,7 @@ function gruppiere(liste: Korrektur[], feld: (k: Korrektur) => string | null): G
     .sort((a, b) => b.n - a.n);
 }
 
-const NAME: Record<string, string> = { grabbel: 'Grabbelkiste', regal: 'Regal', lager: 'Lager', gruen: 'grüner Ampel', gelb: 'gelber Ampel', rot: 'roter Ampel' };
+const NAME: Record<string, string> = { grabbel: 'Bücherbox', regal: 'Regal', lager: 'Lager', gruen: 'grüner Ampel', gelb: 'gelber Ampel', rot: 'roter Ampel' };
 
 export function werteKorrekturenAus(liste: Korrektur[]): Auswertung {
   const mitPreis = liste.filter((k) => Math.abs(k.endpreis - k.vorschlag) >= 0.005);

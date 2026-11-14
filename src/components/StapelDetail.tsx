@@ -13,7 +13,7 @@ import { MarktErgebnis } from '../lib/markt';
 import { Beschreibung, kiBeschreibung } from '../lib/beschreibung';
 import { fehlerText } from '../lib/fehler';
 import {
-  berechnePreis, euro, KATEGORIE_LABEL, Merkmal, MERKMAL_LABEL, PreisRegeln, Zustand, ZUSTAND_LABEL,
+  berechnePreis, euro, KATEGORIE_LABEL, kategorieFuerEndpreis, Merkmal, MERKMAL_LABEL, PreisRegeln, Zustand, ZUSTAND_LABEL,
 } from '../lib/preis';
 import { BEREICH, F, hell, KATEGORIE_FARBE, ABSTAND, SCHRIFT, schatten, ZUSTAND_FARBE } from '../theme';
 import { Abschnitt, Chip, Genres, Icon, KategorieBadge, Knopf, Schritt, Stepper } from './Teile';
@@ -146,6 +146,8 @@ export function StapelDetail({ eintrag, regeln, einst, onSchliessen, onGespeiche
   );
 
   const endpreis = ergebnis ? Math.max(0.5, ergebnis.vorschlag + korrektur * regeln.raster) : null;
+  // Kategorie zum aktuellen Preis: von Hand auf 1 €/2 € → Bücherbox (und zurück)
+  const kategorie = ergebnis && endpreis != null ? kategorieFuerEndpreis(endpreis, ergebnis.kategorie, regeln) : ergebnis?.kategorie ?? null;
   const bewegung = useBewegung(einst.seltenheit.effekte);
   const seltenheit = useMemo(
     () => seltenheitAusEintrag(eintrag, einst.seltenheit, { markt, preis: ergebnis, endpreis, merkmale }),
@@ -196,7 +198,7 @@ export function StapelDetail({ eintrag, regeln, einst, onSchliessen, onGespeiche
       merkmale: ergebnis.merkmale,
       vorschlag: ergebnis.vorschlag,
       endpreis,
-      kategorie: ergebnis.kategorie,
+      kategorie: kategorieFuerEndpreis(endpreis, ergebnis.kategorie, regeln),
       vergleichspreis: ergebnis.vergleichspreis,
       neupreis,
       anker: ergebnis.anker,
@@ -269,7 +271,7 @@ export function StapelDetail({ eintrag, regeln, einst, onSchliessen, onGespeiche
                 jahr: eintrag.jahr ?? undefined,
                 neupreis: neupreis ?? undefined,
                 preis: endpreis ?? eintrag.endpreis,
-                kategorie: ergebnis?.kategorie ?? eintrag.kategorie ?? undefined,
+                kategorie: kategorie ?? eintrag.kategorie ?? undefined,
                 zustand,
                 stufe: seltenheit?.stufe,
                 vergleich: eintrag.vergleichspreis,
@@ -426,18 +428,18 @@ export function StapelDetail({ eintrag, regeln, einst, onSchliessen, onGespeiche
 
         {/* Ergebnis */}
         {ergebnis && endpreis != null ? (
-          <View style={[st.ergebnis, schatten(KATEGORIE_FARBE[ergebnis.kategorie], 6)]}>
+          <View style={[st.ergebnis, schatten(KATEGORIE_FARBE[kategorie ?? ergebnis.kategorie], 6)]}>
             <View style={st.ergebnisKopf}>
               <Icon name="pencil" size={18} farbe={F.grau} />
               <Text style={st.ergebnisTitel}>m4rgin-Preis</Text>
-              <KategorieBadge k={ergebnis.kategorie} gross />
+              <KategorieBadge k={kategorie ?? ergebnis.kategorie} gross />
             </View>
             <View style={st.stepper}>
               <Schritt gross onPress={() => setKorrektur((k) => k - 1)} />
               <Text style={st.preisGross}>{euro(endpreis)}</Text>
               <Schritt gross plus onPress={() => setKorrektur((k) => k + 1)} />
             </View>
-            <Rechnung schritte={ergebnis.schritte} notizen={ergebnis.notizen} farbe={KATEGORIE_FARBE[ergebnis.kategorie]} />
+            <Rechnung schritte={ergebnis.schritte} notizen={ergebnis.notizen} farbe={KATEGORIE_FARBE[kategorie ?? ergebnis.kategorie]} />
             {korrektur !== 0 && (
               <Text style={st.erklaerung}>
                 Von Hand {korrektur > 0 ? '+' : ''}{euro(korrektur * regeln.raster)}
@@ -478,7 +480,7 @@ export function StapelDetail({ eintrag, regeln, einst, onSchliessen, onGespeiche
                 preis: endpreis ?? eintrag.endpreis,
                 // Unbelegte Seltenheit zeigt die Karte als Bronze – wie beim Scannen
                 seltenheit: seltenheit && seltenheit.bestaetigt ? seltenheit : { ...OHNE_STUFE, gruende: seltenheit?.gruende ?? [] },
-                ort: ergebnis ? KATEGORIE_LABEL[ergebnis.kategorie] : null,
+                ort: kategorie ? KATEGORIE_LABEL[kategorie] : null,
               }
             : null
         }
