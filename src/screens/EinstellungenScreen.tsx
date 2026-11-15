@@ -7,6 +7,8 @@ import { einstellungenSpeichern, ignorierteHaendlerLaden, ignorierteHaendlerSpei
 import { Auswertung, werteKorrekturenAus } from '../lib/korrektur';
 import { quellenTesten } from '../dienste';
 import { VERSION_TEXT } from '../version';
+import { HavenKoppeln } from '../components/HavenKoppeln';
+import { Gekoppelt } from '../lib/kopplung';
 import { KARTENSTIL_LABEL, KARTENSTILE, setzeKartenstil, STUFE_NAME } from '../kartenstil';
 import { Merkmal, MERKMAL_LABEL, ZweigRegeln, Zustand, ZUSTAND_LABEL } from '../lib/preis';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -41,6 +43,16 @@ export function EinstellungenScreen({ einst, onGespeichert, onEinfuehrung }: Pro
   const [test, setTest] = useState<string | null>(null);
   const [testLaeuft, setTestLaeuft] = useState(false);
   const [probeDaten, setProbeDaten] = useState<FeierDaten | null>(null);
+  const [koppelnOffen, setKoppelnOffen] = useState(false);
+  /** QR-Kopplung geklappt: Adresse + Schlüssel übernehmen und gleich speichern (Schlüssel landet im sicheren Speicher) */
+  const gekoppelt = async (g: Gekoppelt) => {
+    setKoppelnOffen(false);
+    const neu: Einstellungen = { ...e, haven: { ...e.haven, adresse: g.adresse, schluessel: g.schluessel, preise: e.haven.preise ?? true } };
+    setE(neu);
+    await einstellungenSpeichern(neu);
+    onGespeichert(neu);
+    Alert.alert('Mit Haven gekoppelt', `${g.name ? `Haven führt dieses Handy als „${g.name}“.\n` : ''}„An Haven“ und Preise über Haven sind jetzt eingerichtet.`);
+  };
   const rand = useSafeAreaInsets();
   useEffect(() => setE(einst), [einst]);
   const [ignoriert, setIgnoriert] = useState<string[]>([]);
@@ -185,8 +197,16 @@ export function EinstellungenScreen({ einst, onGespeichert, onEinfuehrung }: Pro
         <Abschnitt titel="Haven" icon="cellphone-arrow-down" farbe={F.blau}>
           <Text style={st.klein}>
             „An Haven“ im Preis-Blatt und im Stapel schickt das Buch an Haven – dort erscheint es oben beim Handy-Symbol.
-            Adresse und Geräte-Schlüssel (beginnt mit m4g_) zeigt Haven einmal an: Administration → Verwaltung → „Geräte (m4rgin)“ → Gerät hinzufügen.
+            Am einfachsten: koppeln. In Haven auf das Handy-Symbol → „Handy koppeln“ und den QR-Code hier scannen.
           </Text>
+          <Knopf
+            label={e.haven.schluessel ? 'Neu mit Haven koppeln (QR-Code)' : 'Mit Haven koppeln (QR-Code)'}
+            icon="qrcode-scan"
+            farbe={F.blau}
+            onPress={() => setKoppelnOffen(true)}
+            stil={{ marginTop: 8, marginBottom: 4 }}
+          />
+          <Text style={st.klein}>Oder von Hand (Administration → Verwaltung → „Geräte (m4rgin)“ zeigt Adresse und Schlüssel m4g_… einmal an):</Text>
           <Feld label="Haven-Adresse (über Tailscale: http://100.73.19.78:5002)" wert={e.haven.adresse} setze={(v) => setE({ ...e, haven: { ...e.haven, adresse: v.trim() } })} />
           <Feld label="Geräte-Schlüssel" wert={e.haven.schluessel} geheim setze={(v) => setE({ ...e, haven: { ...e.haven, schluessel: v.trim() } })} />
           <Schalter
@@ -424,6 +444,7 @@ export function EinstellungenScreen({ einst, onGespeichert, onEinfuehrung }: Pro
       </View>
 
       <Feier daten={probeDaten} effekte={e.seltenheit.effekte} onZu={() => setProbeDaten(null)} />
+      {koppelnOffen && <HavenKoppeln sichtbar onFertig={gekoppelt} onAbbrechen={() => setKoppelnOffen(false)} />}
       {test != null && (
         <Modal visible animationType="slide" onRequestClose={() => setTest(null)}>
           <ScrollView style={{ flex: 1, backgroundColor: F.papier }} contentContainerStyle={{ padding: ABSTAND, paddingTop: rand.top + ABSTAND, paddingBottom: rand.bottom + ABSTAND }}>

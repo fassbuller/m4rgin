@@ -524,3 +524,39 @@ test('Preise über Haven: Pegel-Antwort → MarktErgebnis, Fehlertexte, URL und 
     globalThis.fetch = alt;
   }
 });
+
+test('Haven koppeln per QR: QR prüfen, Code tauschen, Fehlertexte', async () => {
+  const { kopplungAusQr, koppeln } = await import('../src/lib/kopplung');
+  const code = 'a'.repeat(43);
+  assert.deepEqual(kopplungAusQr(JSON.stringify({ typ: 'haven-kopplung', v: 1, adresse: 'http://100.73.19.78:5002/', code })), {
+    adresse: 'http://100.73.19.78:5002', code,
+  });
+  assert.equal(kopplungAusQr(JSON.stringify({ typ: 'haven-kopplung', v: 2, adresse: 'http://x', code })), null);
+  assert.equal(kopplungAusQr(JSON.stringify({ typ: 'anders', v: 1, adresse: 'http://x', code })), null);
+  assert.equal(kopplungAusQr(JSON.stringify({ typ: 'haven-kopplung', v: 1, adresse: 'javascript:alert(1)', code })), null);
+  assert.equal(kopplungAusQr('9783499256356'), null);
+
+  const alt = globalThis.fetch;
+  const gesehen: { url: string; init?: RequestInit }[] = [];
+  let antwort = () => new Response(JSON.stringify({ data: { schluessel: 'm4g_neu', name: 'Pixel 8', adresse: 'https://laden.kasse-test.fun' } }), {
+    status: 201, headers: { 'Content-Type': 'application/json' },
+  });
+  globalThis.fetch = (async (u: string, init?: RequestInit) => {
+    gesehen.push({ url: String(u), init });
+    return antwort();
+  }) as typeof fetch;
+  try {
+    const g = await koppeln({ adresse: 'https://laden.kasse-test.fun', code }, 'Pixel 8');
+    assert.deepEqual(g, { adresse: 'https://laden.kasse-test.fun', schluessel: 'm4g_neu', name: 'Pixel 8' });
+    assert.equal(gesehen[0].url, 'https://laden.kasse-test.fun/api/m4rgin/koppeln');
+    assert.equal(gesehen[0].init?.method, 'POST');
+    assert.equal((gesehen[0].init?.headers as Record<string, string>).Authorization, undefined);
+    assert.deepEqual(JSON.parse(String(gesehen[0].init?.body)), { code, geraet: 'Pixel 8' });
+    for (const [status, muster] of [[401, /neuen QR-Code/], [404, /ausgeschaltet/], [429, /Minute/]] as const) {
+      antwort = () => new Response('{"error":{}}', { status, headers: { 'Content-Type': 'application/json' } });
+      await assert.rejects(koppeln({ adresse: 'https://laden.kasse-test.fun', code }, 'x'), muster);
+    }
+  } finally {
+    globalThis.fetch = alt;
+  }
+});
