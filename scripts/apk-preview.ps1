@@ -13,7 +13,10 @@ $env:EXPO_TOKEN = [Runtime.InteropServices.Marshal]::PtrToStringAuto($zeiger)
 [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($zeiger)
 
 Set-Location (Split-Path -Parent $PSScriptRoot)
-$tmp = Join-Path (Get-Location) ".tmp"
+# Temp-Ordner AUSSERHALB des Projekts: EAS kopiert das ganze Projekt für den Upload in den Temp-Ordner –
+# liegt der im Projekt (.tmp), scheitert das („cannot copy … to a subdirectory of self“). AppData\Local\Temp
+# geht hier nicht zuverlässig (Zugriff verweigert), deshalb ein eigener Ordner im Benutzerverzeichnis.
+$tmp = Join-Path $env:USERPROFILE ".m4rgin-tmp"
 New-Item -ItemType Directory -Force $tmp | Out-Null
 $env:TEMP = $tmp
 $env:TMP = $tmp
