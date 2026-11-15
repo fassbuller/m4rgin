@@ -61,6 +61,8 @@ export interface MarktErgebnis {
   status: QuellenStatus[];
   /** Quellen, die gar nicht gefragt wurden (ausgeschaltet oder ohne Zugang) */
   aus?: QuellenId[];
+  /** Die Preise kamen über Haven/Pegel (Zugänge des Ladens), nicht direkt vom Handy */
+  ueberHaven?: boolean;
   lage: Marktlage;
   zeit: string;
 }

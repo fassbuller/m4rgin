@@ -15,6 +15,8 @@ export interface HavenZugang {
   adresse: string;
   /** Geräte-Schlüssel aus Haven (geheim, liegt im sicheren Speicher) */
   schluessel: string;
+  /** Marktpreise über Haven holen (Zugänge des Ladens). Standard: an, sobald Haven eingerichtet ist. */
+  preise?: boolean;
 }
 
 export interface BuchFuerHaven {

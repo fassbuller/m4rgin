@@ -42,7 +42,7 @@ export const STANDARD_EINSTELLUNGEN: Einstellungen = {
   trendAktiv: true,
   schnellmodus: true,
   googleBooksKey: '',
-  haven: { adresse: '', schluessel: '' },
+  haven: { adresse: '', schluessel: '', preise: true },
   seltenheit: STANDARD_SELTENHEIT,
 };
 

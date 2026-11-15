@@ -251,6 +251,9 @@ export function PreisSheet(p: Props) {
             <Text style={st.klein}>Keine Preisquelle eingerichtet (Einstellungen).</Text>
           )}
         </View>
+        {markt?.ueberHaven && (
+          <Text style={[st.klein, { marginTop: 4 }]}>Preise über Haven (Zugänge des Ladens)</Text>
+        )}
         {markt && markt.lage.anzahl > 0 && (
           <Text style={st.lage}>
             {markt.lage.anzahl} Angebote · ab {euro(markt.lage.min!)} · Median {euro(markt.lage.median!)}

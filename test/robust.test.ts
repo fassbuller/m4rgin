@@ -463,3 +463,64 @@ test('Bücherbox: Kategorie folgt dem Endpreis, auch bei Handkorrektur', async (
   assert.equal(kategorieFuerEndpreis(16, 'regal', r), 'regal'); // Regal ↔ Lager entscheidet die Rechnung
   assert.equal(kategorieFuerEndpreis(12, 'lager', r), 'lager');
 });
+
+test('Preise über Haven: Pegel-Antwort → MarktErgebnis, Fehlertexte, URL und Schlüssel', async () => {
+  const { ausPegel, havenMarktUrl, marktUeberHaven } = await import('../src/lib/havenMarkt');
+  const z = { adresse: 'http://100.73.19.78:5002/', schluessel: 'm4g_test' };
+  assert.equal(
+    havenMarktUrl(z, { isbn: '9783499256356', titel: 'Tschick', autor: 'Herrndorf' }),
+    'http://100.73.19.78:5002/api/m4rgin/markt?isbn=9783499256356&titel=Tschick&autor=Herrndorf',
+  );
+
+  // So antwortet Pegel /v1/markt (gekürzt)
+  const pegel = {
+    angebote: [
+      { quelle: 'booklooker', plattform: 'booklooker', haendler: 'Antiquariat A', preis: 3, versand: 2, versandGeschaetzt: false, gesamt: 5, einband: 'tb', verkaeufer: 'gewerblich' },
+      { quelle: 'ebay', plattform: 'eBay', preis: 2, versand: 2.5, versandGeschaetzt: false, gesamt: 4.5, zustandText: 'Mängelexemplar', verkaeufer: 'privat' },
+      { quelle: 'eurobuch', plattform: 'ZVAB', haendler: 'B', preis: 6, versand: 3, versandGeschaetzt: true, gesamt: 9, einband: 'hc' },
+    ],
+    aussortiert: 2,
+    hinweise: ['Hinweis von Pegel'],
+    ueberIsbn: true,
+    quellen: [
+      { id: 'booklooker', eingerichtet: true, ok: true, anzahl: 1 },
+      { id: 'eurobuch', eingerichtet: true, ok: false, anzahl: 0, fehler: 'eurobuch verweigert die Abfrage („No Service 3-8“)' },
+      { id: 'ebay', eingerichtet: true, ok: true, anzahl: 1 },
+    ],
+    zeit: '2026-11-15T10:00:00Z',
+  } as const;
+  const m = ausPegel(pegel as never, { titel: 'Tschick', autor: 'Herrndorf', ignorierteHaendler: ['B'] });
+  assert.equal(m.ueberHaven, true);
+  assert.equal(m.ueberIsbn, true);
+  // Mängelexemplar und ignorierter Händler fliegen bei m4rgins eigener Prüfung raus
+  assert.deepEqual(m.angebote.map((a) => [a.gesamt, a.gebunden, a.verkaeuferTyp]), [[5, false, 'gewerblich']]);
+  assert.equal(m.aussortiert?.length, 2);
+  assert.deepEqual(m.status.map((s) => [s.quelle, s.ok]), [['booklooker', true], ['eurobuch', false], ['ebay', true]]);
+  assert.ok(m.hinweise?.includes('Hinweis von Pegel'));
+  assert.ok(m.hinweise?.some((h) => /2 Angebote hat Haven schon aussortiert/.test(h)));
+  assert.equal(m.lage.anzahl, 1);
+
+  const alt = globalThis.fetch;
+  const gesehen: { url: string; init?: RequestInit }[] = [];
+  let antwort: Response = new Response(JSON.stringify({ data: pegel }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  globalThis.fetch = (async (u: string, init?: RequestInit) => {
+    gesehen.push({ url: String(u), init });
+    return antwort;
+  }) as typeof fetch;
+  try {
+    const r = await marktUeberHaven(z, { isbn: '9783499256356' }, { titel: 'Tschick' });
+    assert.equal(r.ueberHaven, true);
+    assert.equal((gesehen[0].init?.headers as Record<string, string>).Authorization, 'Bearer m4g_test');
+    for (const [status, muster] of [[401, /Schlüssel/], [404, /keine Preise/], [429, /Minute/], [503, /keine Preisquelle/]] as const) {
+      antwort = new Response('{}', { status });
+      await assert.rejects(marktUeberHaven(z, { isbn: '9783499256356' }, { titel: 'Tschick' }), muster);
+    }
+    antwort = new Response('<!doctype html><div id="root"></div>', { status: 200, headers: { 'Content-Type': 'text/html' } });
+    await assert.rejects(marktUeberHaven(z, { isbn: '9783499256356' }, { titel: 'Tschick' }), /noch keine Preise/);
+    globalThis.fetch = (async () => { throw new TypeError('Network request failed'); }) as typeof fetch;
+    await assert.rejects(marktUeberHaven(z, { isbn: '9783499256356' }, { titel: 'Tschick' }), /nicht erreichbar/);
+    await assert.rejects(marktUeberHaven({ adresse: '', schluessel: '' }, { isbn: '1' }, { titel: 'x' }), /nicht eingerichtet/);
+  } finally {
+    globalThis.fetch = alt;
+  }
+});

@@ -4,11 +4,13 @@ import { Titel } from './lib/titel';
 import { dnbIsbn, dnbSuche } from './lib/dnb';
 import { openLibraryIsbn } from './lib/openlibrary';
 import { baueCql, SuchFelder } from './lib/suche';
-import { kurzerFehler, MarktErgebnis, marktAbfragen, mitTimeout, vollstaendig } from './lib/markt';
+import { kurzerFehler, MarktErgebnis, marktAbfragen, mitTimeout, QUELLEN_NAME, vollstaendig } from './lib/markt';
 import { eurobuchAbgelehnt, eurobuchQuelle, eurobuchUrl, parseEurobuch } from './lib/quellen/eurobuch';
 import { booklookerQuelle, booklookerRoh, booklookerToken, parseBooklookerAntwort } from './lib/quellen/booklooker';
 import { VERSION_TEXT } from './version';
 import { erschliessung } from './lib/erschliessung';
+import { marktUeberHaven } from './lib/havenMarkt';
+import { havenBereit } from './lib/haven';
 import { LADENPLAN, standort, Standort } from './lib/ladenplan';
 import { appToken, ebayQuelle } from './lib/quellen/ebay';
 import { angebotsSignal, interesseSignal, neuauflageSignal, Signal } from './lib/trend';
@@ -72,12 +74,33 @@ export async function marktFuer(t: Titel, e: Einstellungen): Promise<MarktErgebn
     ? { isbn: t.isbn, ...(titelBekannt ? { titel: t.titel, autor: nachname(t) } : {}) }
     : { titel: t.titel, autor: nachname(t) };
   const ignorierteHaendler = await ignorierteHaendlerLaden().catch(() => []);
-  const m = await marktAbfragen(quellen, anfrage, {
-    pruef: { titel: t.titel, autor: t.autoren[0], bindung: bindungAus(t.einband), ignorierteHaendler },
-  });
+  const pruef = { titel: t.titel, autor: t.autoren[0], bindung: bindungAus(t.einband), ignorierteHaendler };
+
+  // Preise über Haven (Zugänge des Ladens), wenn eingerichtet und nicht abgeschaltet – so bekommen auch
+  // Testpersonen ohne eigene booklooker/eurobuch/eBay-Zugänge echte Preise. Scheitert Haven und es gibt
+  // eigene Zugänge, wird direkt gefragt; sonst kommt der Haven-Fehler verständlich an.
+  let havenFehler: string | null = null;
+  if (preiseUeberHaven(e)) {
+    try {
+      const m = await marktUeberHaven(e.haven, anfrage, pruef);
+      if (vollstaendig(m)) await verlaufSpeichern(schluessel(t), m).catch(() => undefined);
+      return m;
+    } catch (err) {
+      if (!quellen.some((q) => q.aktiv)) throw err;
+      havenFehler = String((err as Error)?.message ?? err);
+    }
+  }
+
+  const m = await marktAbfragen(quellen, anfrage, { pruef });
+  if (havenFehler) m.hinweise = [`Preise über Haven gingen nicht (${havenFehler}) – direkt gefragt.`, ...(m.hinweise ?? [])];
   // Nur vollständige Abfragen in den Verlauf – ein Quellenausfall ist kein „Buch kaum am Markt“
   if (vollstaendig(m)) await verlaufSpeichern(schluessel(t), m).catch(() => undefined);
   return m;
+}
+
+/** Preise über Haven holen? Ja, sobald Haven eingerichtet ist – außer der Schalter steht auf aus. */
+export function preiseUeberHaven(e: Einstellungen): boolean {
+  return e.haven.preise !== false && havenBereit(e.haven);
 }
 
 /** Drei Signale; jedes darf einzeln fehlschlagen. */
@@ -184,6 +207,18 @@ export function seltenheitFuer(
 export async function quellenTesten(e: Einstellungen, isbn = '9783499256356'): Promise<string> {
   const teile: string[] = [VERSION_TEXT];
   const sek =(t0: number) => `${((Date.now() - t0) / 1000).toFixed(1)} s`;
+  // Preise über Haven: so, wie beim Scannen gefragt wird
+  if (preiseUeberHaven(e)) {
+    const t0 = Date.now();
+    try {
+      const m = await marktUeberHaven(e.haven, { isbn, titel: 'Tschick', autor: 'Herrndorf' }, { titel: 'Tschick', autor: 'Herrndorf' });
+      const quellen = m.status.map((s) => `${QUELLEN_NAME[s.quelle]} ${s.ok ? s.anzahl : kurzerFehler(s.fehler)}`).join(' · ');
+      teile.push(`■ Haven (Preise über die Zugänge des Ladens): ${m.angebote.length} Angebote (${sek(t0)})\n  ${quellen || 'keine Quelle gemeldet'}`);
+    } catch (err) {
+      teile.push(`■ Haven: Fehler nach ${sek(t0)}: ${String((err as Error)?.message ?? err)}`);
+    }
+    teile.push('Eigene Zugänge (nur Ersatz, wenn Haven nicht antwortet):');
+  }
   // Ausgeschaltete Quellen werden beim Scannen gar nicht gefragt – das muss der Test deutlich sagen
   const aus = (an: boolean) => (an ? '' : '\n  ⚠ In der App ausgeschaltet – beim Scannen wird diese Quelle nicht gefragt (Schalter oben einschalten).');
   const roh = async (name: string, url: string, parse: (x: string) => number, an: boolean, gesperrt?: (x: string) => string | null) => {

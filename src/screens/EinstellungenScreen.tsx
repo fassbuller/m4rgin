@@ -189,6 +189,16 @@ export function EinstellungenScreen({ einst, onGespeichert, onEinfuehrung }: Pro
           </Text>
           <Feld label="Haven-Adresse (über Tailscale: http://100.73.19.78:5002)" wert={e.haven.adresse} setze={(v) => setE({ ...e, haven: { ...e.haven, adresse: v.trim() } })} />
           <Feld label="Geräte-Schlüssel" wert={e.haven.schluessel} geheim setze={(v) => setE({ ...e, haven: { ...e.haven, schluessel: v.trim() } })} />
+          <Schalter
+            label="Marktpreise über Haven holen"
+            wert={e.haven.preise !== false}
+            setze={(v) => setE({ ...e, haven: { ...e.haven, preise: v } })}
+          />
+          <Text style={st.klein}>
+            {e.haven.preise !== false
+              ? 'Haven fragt booklooker, eurobuch und eBay mit den Zugängen des Ladens – eigene Zugänge oben sind dann nur Ersatz, falls Haven nicht antwortet.'
+              : 'Aus: Die Preise kommen direkt über die eigenen Zugänge oben.'}
+          </Text>
           {!!e.haven.adresse && !/^https?:\/\//i.test(e.haven.adresse) && (
             <Text style={[st.klein, { color: F.rot }]}>Die Adresse muss mit http:// oder https:// beginnen.</Text>
           )}
