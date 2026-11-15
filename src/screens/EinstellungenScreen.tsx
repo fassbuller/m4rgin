@@ -9,6 +9,8 @@ import { quellenTesten } from '../dienste';
 import { VERSION_TEXT } from '../version';
 import { HavenKoppeln } from '../components/HavenKoppeln';
 import { Gekoppelt } from '../lib/kopplung';
+import { havenBereit } from '../lib/haven';
+import { TEST_HAVEN, TEST_HAVEN_NAME } from '../testvorgabe';
 import { KARTENSTIL_LABEL, KARTENSTILE, setzeKartenstil, STUFE_NAME } from '../kartenstil';
 import { Merkmal, MERKMAL_LABEL, ZweigRegeln, Zustand, ZUSTAND_LABEL } from '../lib/preis';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -199,6 +201,15 @@ export function EinstellungenScreen({ einst, onGespeichert, onEinfuehrung }: Pro
             „An Haven“ im Preis-Blatt und im Stapel schickt das Buch an Haven – dort erscheint es oben beim Handy-Symbol.
             Am einfachsten: koppeln. In Haven auf das Handy-Symbol → „Handy koppeln“ und den QR-Code hier scannen.
           </Text>
+          {TEST_HAVEN && !havenBereit(e.haven) && (
+            // Vorgabe der Testversion – den Schlüssel nie anzeigen
+            <View style={st.testHaven}>
+              <Icon name="check-circle" size={18} farbe={F.gruen} />
+              <Text style={[st.klein, { flex: 1, color: F.tinte }]}>
+                Testversion: verbunden mit dem Test-Haven ({TEST_HAVEN_NAME}). Preise und „An Haven“ laufen darüber – eine eigene Kopplung hat Vorrang.
+              </Text>
+            </View>
+          )}
           <Knopf
             label={e.haven.schluessel ? 'Neu mit Haven koppeln (QR-Code)' : 'Mit Haven koppeln (QR-Code)'}
             icon="qrcode-scan"
@@ -561,6 +572,7 @@ function Schalter({ label, wert, setze }: { label: string; wert: boolean; setze:
 }
 
 const st = StyleSheet.create({
+  testHaven: { flexDirection: 'row', gap: 8, alignItems: 'flex-start', backgroundColor: hell(F.gruen, 0.12), borderRadius: 10, padding: 10, marginTop: 8 },
   wurzel: { flex: 1, backgroundColor: F.papier },
   abschnitt: { borderWidth: 2, borderColor: F.tinte, backgroundColor: F.karte, padding: 14, marginBottom: 14, borderTopWidth: 8 },
   abschnittKopf: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },

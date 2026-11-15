@@ -51,6 +51,18 @@ export function havenPayload(b: BuchFuerHaven, version: string, jetzt = new Date
   return { ...b, quelle: 'm4rgin', version, gesendet: jetzt.toISOString() };
 }
 
+/**
+ * Welcher Haven gilt? Eine eigene Kopplung (Adresse + Schlüssel in den Einstellungen) hat Vorrang. Sonst gilt die
+ * Vorgabe der Testversion (fest eingebauter gemeinsamer Schlüssel für den Test-Haven), sonst keiner.
+ * Der Schalter „Preise über Haven“ der Einstellungen gilt auch für die Vorgabe.
+ */
+export function wirksamerHaven(eigen: HavenZugang | undefined, vorgabe: HavenZugang | null): { zugang: HavenZugang; vorgabe: boolean } | null {
+  if (havenBereit(eigen)) return { zugang: eigen, vorgabe: false };
+  const schalter = (eigen as HavenZugang | undefined)?.preise;
+  if (havenBereit(vorgabe)) return { zugang: { ...vorgabe, preise: schalter ?? true }, vorgabe: true };
+  return null;
+}
+
 export function havenBereit(z?: HavenZugang | null): z is HavenZugang {
   return !!z && /^https?:\/\/\S+$/i.test(z.adresse.trim()) && z.schluessel.trim().length > 0;
 }

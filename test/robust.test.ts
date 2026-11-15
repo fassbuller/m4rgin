@@ -560,3 +560,14 @@ test('Haven koppeln per QR: QR prüfen, Code tauschen, Fehlertexte', async () =>
     globalThis.fetch = alt;
   }
 });
+
+test('Test-Haven-Vorgabe: eigene Kopplung hat Vorrang, Schalter gilt auch für die Vorgabe', async () => {
+  const { wirksamerHaven } = await import('../src/lib/haven');
+  const vorgabe = { adresse: 'https://laden.kasse-test.fun', schluessel: 'm4g_gemeinsam', preise: true };
+  const eigen = { adresse: 'http://100.73.19.78:5002', schluessel: 'm4g_eigen' };
+  assert.deepEqual(wirksamerHaven(eigen, vorgabe), { zugang: eigen, vorgabe: false });
+  assert.deepEqual(wirksamerHaven({ adresse: '', schluessel: '' }, vorgabe), { zugang: vorgabe, vorgabe: true });
+  assert.equal(wirksamerHaven({ adresse: '', schluessel: '', preise: false }, vorgabe)?.zugang.preise, false);
+  assert.equal(wirksamerHaven({ adresse: '', schluessel: '' }, null), null);
+  assert.equal(wirksamerHaven(undefined, null), null);
+});

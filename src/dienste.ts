@@ -10,7 +10,8 @@ import { booklookerQuelle, booklookerRoh, booklookerToken, parseBooklookerAntwor
 import { VERSION_TEXT } from './version';
 import { erschliessung } from './lib/erschliessung';
 import { marktUeberHaven } from './lib/havenMarkt';
-import { havenBereit } from './lib/haven';
+import { HavenZugang, wirksamerHaven } from './lib/haven';
+import { TEST_HAVEN } from './testvorgabe';
 import { LADENPLAN, standort, Standort } from './lib/ladenplan';
 import { appToken, ebayQuelle } from './lib/quellen/ebay';
 import { angebotsSignal, interesseSignal, neuauflageSignal, Signal } from './lib/trend';
@@ -82,7 +83,7 @@ export async function marktFuer(t: Titel, e: Einstellungen): Promise<MarktErgebn
   let havenFehler: string | null = null;
   if (preiseUeberHaven(e)) {
     try {
-      const m = await marktUeberHaven(e.haven, anfrage, pruef);
+      const m = await marktUeberHaven(havenFuer(e)!, anfrage, pruef);
       if (vollstaendig(m)) await verlaufSpeichern(schluessel(t), m).catch(() => undefined);
       return m;
     } catch (err) {
@@ -100,7 +101,13 @@ export async function marktFuer(t: Titel, e: Einstellungen): Promise<MarktErgebn
 
 /** Preise über Haven holen? Ja, sobald Haven eingerichtet ist – außer der Schalter steht auf aus. */
 export function preiseUeberHaven(e: Einstellungen): boolean {
-  return e.haven.preise !== false && havenBereit(e.haven);
+  const h = havenFuer(e);
+  return !!h && h.preise !== false;
+}
+
+/** Der Haven, der gilt: eigene Kopplung, sonst die Vorgabe der Testversion (TEST_HAVEN), sonst keiner. */
+export function havenFuer(e: Einstellungen): HavenZugang | null {
+  return wirksamerHaven(e.haven, TEST_HAVEN)?.zugang ?? null;
 }
 
 /** Drei Signale; jedes darf einzeln fehlschlagen. */
@@ -211,7 +218,7 @@ export async function quellenTesten(e: Einstellungen, isbn = '9783499256356'): P
   if (preiseUeberHaven(e)) {
     const t0 = Date.now();
     try {
-      const m = await marktUeberHaven(e.haven, { isbn, titel: 'Tschick', autor: 'Herrndorf' }, { titel: 'Tschick', autor: 'Herrndorf' });
+      const m = await marktUeberHaven(havenFuer(e)!, { isbn, titel: 'Tschick', autor: 'Herrndorf' }, { titel: 'Tschick', autor: 'Herrndorf' });
       const quellen = m.status.map((s) => `${QUELLEN_NAME[s.quelle]} ${s.ok ? s.anzahl : kurzerFehler(s.fehler)}`).join(' · ');
       teile.push(`■ Haven (Preise über die Zugänge des Ladens): ${m.angebote.length} Angebote (${sek(t0)})\n  ${quellen || 'keine Quelle gemeldet'}`);
     } catch (err) {

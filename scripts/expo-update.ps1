@@ -44,6 +44,14 @@ $commit = (git rev-parse --short HEAD)
 if (git status --porcelain --untracked-files=no) { $commit = "$commit+" }
 $env:EXPO_PUBLIC_STAND = "$commit vom $(Get-Date -Format 'dd.MM. HH:mm')"
 Write-Host "Stand: $env:EXPO_PUBLIC_STAND" -ForegroundColor Cyan
+# Testversion (Kanal „laden“): Test-Haven + gemeinsamer Schlüssel als Vorgabe; andere Kanäle ohne
+. "$PSScriptRoot\testvorgabe.ps1"
+if ($Kanal -eq "laden") {
+    $null = Set-TestVorgabe
+} else {
+    $env:EXPO_PUBLIC_HAVEN_ADRESSE = ""
+    $env:EXPO_PUBLIC_HAVEN_SCHLUESSEL = ""
+}
 # Wächter: eas update bleibt hier gelegentlich gleich zu Beginn sehr lange ohne Ausgabe hängen (der zweite
 # Versuch lief bisher immer durch). Darum mit Zeitlimit starten und bei Hänger selbst neu versuchen –
 # der Token bleibt in diesem Fenster, er muss nicht neu eingegeben werden.
