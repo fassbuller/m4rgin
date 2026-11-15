@@ -4,7 +4,8 @@ import { Titel } from './lib/titel';
 import { dnbIsbn, dnbSuche } from './lib/dnb';
 import { openLibraryIsbn } from './lib/openlibrary';
 import { baueCql, SuchFelder } from './lib/suche';
-import { kurzerFehler, MarktErgebnis, marktAbfragen, mitTimeout, QUELLEN_NAME, vollstaendig } from './lib/markt';
+import { kurzerFehler, MarktErgebnis, mitTimeout, QUELLEN_NAME, vollstaendig } from './lib/markt';
+import { marktMitSuchregel } from './lib/suchregel';
 import { eurobuchAbgelehnt, eurobuchQuelle, eurobuchUrl, parseEurobuch } from './lib/quellen/eurobuch';
 import { booklookerQuelle, booklookerRoh, booklookerToken, parseBooklookerAntwort } from './lib/quellen/booklooker';
 import { VERSION_TEXT } from './version';
@@ -68,8 +69,8 @@ export async function marktFuer(t: Titel, e: Einstellungen): Promise<MarktErgebn
     eurobuchQuelle(e.eurobuch, e.versandPauschale),
     ebayQuelle(e.ebay, e.versandPauschale),
   ];
-  // Mit ISBN fragen booklooker/eurobuch nur die Nummer; Titel und Autor reisen mit, damit eBay
-  // bei 0 Treffern noch per Titel suchen kann. Ohne erkannten Titel („ISBN 978…“) nicht.
+  // Titel und Autor reisen mit der ISBN mit: Die Suchregel (lib/suchregel.ts, in Pegel dieselbe) sucht über
+  // beide Wege. Ohne erkannten Titel („ISBN 978…“) holt sie ihn selbst aus dem Katalog.
   const titelBekannt = t.quelle !== 'manuell' || !/^ISBN /.test(t.titel);
   const anfrage = t.isbn
     ? { isbn: t.isbn, ...(titelBekannt ? { titel: t.titel, autor: nachname(t) } : {}) }
@@ -92,7 +93,11 @@ export async function marktFuer(t: Titel, e: Einstellungen): Promise<MarktErgebn
     }
   }
 
-  const m = await marktAbfragen(quellen, anfrage, { pruef });
+  const katalog = async (isbn: string) => {
+    const treffer = (await sucheIsbn(isbn))[0];
+    return treffer ? { titel: treffer.titel, autor: treffer.autoren[0]?.split(',')[0]?.trim() } : null;
+  };
+  const m = await marktMitSuchregel(quellen, anfrage, { pruef }, katalog);
   if (havenFehler) m.hinweise = [`Preise über Haven gingen nicht (${havenFehler}) – direkt gefragt.`, ...(m.hinweise ?? [])];
   // Nur vollständige Abfragen in den Verlauf – ein Quellenausfall ist kein „Buch kaum am Markt“
   if (vollstaendig(m)) await verlaufSpeichern(schluessel(t), m).catch(() => undefined);

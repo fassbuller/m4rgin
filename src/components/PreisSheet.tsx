@@ -275,6 +275,7 @@ export function PreisSheet(p: Props) {
                   {a.haendler ? `  ${a.haendler}` : ''}
                   {a.jahr ? `  · ${a.jahr}` : ''}
                 </Text>
+                {a.andereAusgabe ? <Text style={st.mini}>über den Titel gefunden – andere Ausgabe?</Text> : null}
                 {gewaehlt && (
                   <Text style={st.vergleich}>
                     {gewaehltesAngebot

@@ -706,3 +706,70 @@ test('Begrenzte Map wirft das älteste Element raus', () => {
   m.set('a', 1).set('b', 2).set('a', 3).set('c', 4); // a wurde neu eingereiht → b fliegt
   assert.deepEqual([m.has('a'), m.has('b'), m.has('c'), m.size], [true, false, true, 2]);
 });
+
+// --- Suchregel (wie Pegel, firestream2 v0.99.153/154) ---------------------------------------------
+import { ebaySuchtext, haupttitel, marktMitSuchregel, sperrpauseZuruecksetzen, suchwege, titelFormen } from '../src/lib/suchregel';
+import type { PreisQuelle as SQuelle, Angebot as SAngebot } from '../src/lib/markt';
+
+const SR_ISBN = '9783518468807';
+const srAngebot = (gesamt: number, extra: Partial<SAngebot> = {}): SAngebot =>
+  ({ quelle: 'ebay', plattform: 'eBay', haendler: `h${gesamt}`, preis: gesamt - 3, versand: 3, versandGeschaetzt: false, gesamt, ...extra });
+
+test('Suchregel: ISBN und Titel laufen beide, Titel-Treffer markiert, fremde Bücher nicht', async () => {
+  sperrpauseZuruecksetzen();
+  const gefragt: object[] = [];
+  const bl: SQuelle = { id: 'booklooker', aktiv: true, async suche(an) {
+    gefragt.push({ bl: an });
+    return an.isbn ? [srAngebot(28, { quelle: 'booklooker', plattform: 'booklooker', titel: 'Respektlosigkeit' })] : [];
+  } };
+  const eb: SQuelle = { id: 'ebay', aktiv: true, isbn10Nachfrage: false, async suche(an) {
+    gefragt.push({ eb: an });
+    return an.isbn ? [] : [
+      srAngebot(9, { titel: 'Respektlosigkeit. Provokative Strategien für Therapeuten' }),
+      srAngebot(32, { titel: 'Mami hat mich durchschaut – provokative Strategien mit Humor' }),
+    ];
+  } };
+  const m = await marktMitSuchregel([bl, eb], { isbn: SR_ISBN, titel: 'Respektlosigkeit: provokative Strategien für Therapeuten', autor: 'Cecchin' });
+  assert.deepEqual(m.angebote.map((x) => [x.gesamt, !!x.andereAusgabe]), [[9, true], [28, false]]);
+  assert.equal(m.ueberIsbn, true);
+  assert.ok(gefragt.some((x) => JSON.stringify(x) === JSON.stringify({ eb: { titel: 'Respektlosigkeit provokative Strategien' } })), 'eBay ohne Person');
+  assert.ok(gefragt.some((x) => JSON.stringify(x) === JSON.stringify({ bl: { titel: 'Respektlosigkeit', autor: 'Cecchin' } })), 'booklooker Haupttitel');
+});
+
+test('Suchregel: nur ISBN – Titel aus dem Katalog; ohne ISBN-Treffer gilt die Titelsuche', async () => {
+  sperrpauseZuruecksetzen();
+  const q: SQuelle = { id: 'booklooker', aktiv: true, isbn10Nachfrage: false, async suche(an) { return an.titel ? [srAngebot(9, { quelle: 'booklooker', plattform: 'booklooker', titel: 'Die Wand' })] : []; } };
+  const m = await marktMitSuchregel([q], { isbn: SR_ISBN }, {}, async () => ({ titel: 'Die Wand : Roman', autor: 'Haushofer' }));
+  assert.equal(m.angebote.length, 1);
+  assert.match(m.hinweise![0], /andere Ausgaben/);
+  const ohne = await marktMitSuchregel([q], { isbn: SR_ISBN }, {}, async () => null);
+  assert.equal(ohne.angebote.length, 0);
+});
+
+test('Suchregel: gesperrte Quelle ruht 30 Minuten', async () => {
+  sperrpauseZuruecksetzen();
+  let uhr = 1_000_000;
+  let gefragt = 0;
+  const gesperrt: SQuelle = { id: 'eurobuch', aktiv: true, async suche() { gefragt++; throw new Error('eurobuch verweigert die Abfrage (No Service 3-8)'); } };
+  await marktMitSuchregel([gesperrt], { titel: 'Die Wand' }, {}, undefined, () => uhr);
+  const vorher = gefragt;
+  uhr += 10 * 60_000;
+  const m = await marktMitSuchregel([gesperrt], { titel: 'Effi Briest' }, {}, undefined, () => uhr);
+  assert.equal(gefragt, vorher);
+  assert.match(m.status.find((s) => s.quelle === 'eurobuch')!.fehler!, /Pause bis/);
+  uhr += 25 * 60_000;
+  await marktMitSuchregel([gesperrt], { titel: 'Der Stechlin' }, {}, undefined, () => uhr);
+  assert.ok(gefragt > vorher);
+  sperrpauseZuruecksetzen();
+});
+
+test('Suchregel: Wege, Haupttitel, eBay-Suchtext, Formen', async () => {
+  assert.deepEqual(suchwege({ titel: '978-3-518-46880-7' }), { isbn: SR_ISBN, titel: undefined, autor: undefined });
+  assert.deepEqual(suchwege({ isbn: '123' }), { isbn: undefined, titel: '123', autor: undefined });
+  assert.equal(haupttitel('Respektlosigkeit : provokative Strategien'), 'Respektlosigkeit');
+  assert.equal(ebaySuchtext('Die Wand', 'Haushofer, Marlen'), 'Wand Haushofer');
+  const gefragt: object[] = [];
+  const roh: SQuelle = { id: 'booklooker', aktiv: true, async suche(an) { gefragt.push(an); return []; } };
+  await titelFormen(roh).suche({ isbn: SR_ISBN, titel: 'X' });
+  assert.deepEqual(gefragt, [{ isbn: SR_ISBN, titel: 'X' }]);
+});

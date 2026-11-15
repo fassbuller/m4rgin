@@ -30,6 +30,8 @@ export interface Angebot {
   neu?: boolean;
   /** Verkäuferart, wenn die Quelle sie nennt (booklooker: SellerType 0 = privat, 1 = gewerblich); sonst leer */
   verkaeuferTyp?: 'privat' | 'gewerblich';
+  /** Nur über Titel und Person gefunden, während andere über die ISBN kamen – andere Ausgabe möglich (Suchregel) */
+  andereAusgabe?: boolean;
 }
 
 export interface QuellenStatus {
