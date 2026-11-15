@@ -1,12 +1,15 @@
 // Erste Schritte: fünf Zettel zum Durchblättern beim ersten Start (und jederzeit aus den Einstellungen).
+// In Expo Go (Testversion) weist Seite 2 darauf hin, dass das Titelseiten-Foto noch keine Texterkennung hat.
 // Erklärt vor allem, was man nicht sieht: Gesten im Stapel und was Glitzer bzw. „prüfen“ bedeutet.
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Modal, NativeScrollEvent, NativeSyntheticEvent, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Text } from './Schrift';
 import { Icon, IconName, Knopf } from './Teile';
 import { ABSTAND, aufFarbe, BEREICH, F, KASTEN, SCHRIFT } from '../theme';
+import { kartenstil, STUFE_NAME } from '../kartenstil';
+import { texterkennungVerfuegbar } from '../lib/texterkennung';
 
 interface Seite {
   icon: IconName;
@@ -16,69 +19,79 @@ interface Seite {
   punkte: { icon: IconName; text: string }[];
 }
 
-const SEITEN: Seite[] = [
-  {
-    icon: 'pencil',
-    farbe: F.gelb,
-    notiz: 'willkommen!',
-    titel: 'm4rgin preist Bücher in Sekunden aus',
-    punkte: [
-      { icon: 'store-search', text: 'Fragt booklooker, eurobuch und eBay gleichzeitig nach Vergleichspreisen.' },
-      { icon: 'calculator-variant', text: 'Rechnet nach euren Regeln – jeder Zu- und Abschlag steht sichtbar in der Rechnung.' },
-      { icon: 'bookshelf', text: 'Sagt, wohin das Buch gehört: Bücherbox (1 €/2 €), Regal (mit Raum) oder Lager.' },
-    ],
-  },
-  {
-    icon: 'barcode-scan',
-    farbe: BEREICH.scan,
-    notiz: 'schritt 1',
-    titel: 'Scannen',
-    punkte: [
-      { icon: 'barcode', text: 'Barcode auf der Rückseite in den Rahmen halten – fertig.' },
-      { icon: 'book-open-page-variant', text: 'Alte Bücher ohne ISBN: Titelseite fotografieren.' },
-      { icon: 'magnify', text: 'Oder „Suche“: Titel und Autor tippen. Darunter stehen die zuletzt angesehenen Bücher.' },
-    ],
-  },
-  {
-    icon: 'tag',
-    farbe: F.blau,
-    notiz: 'schritt 2',
-    titel: 'Die Buch-Karte',
-    punkte: [
-      { icon: 'gesture-tap', text: 'Während der Suche steht das Buch unten. Ist es erkannt, springt es als Karte in die Mitte – Bronze, Silber, Gold oder Schwarz.' },
-      { icon: 'arrow-right', text: 'Karte antippen = auspreisen. Wegwischen oder nächsten Barcode scannen = weiter.' },
-      { icon: 'star-half-full', text: 'Zustand und Merkmale wählen – der m4rgin-Preis rechnet live mit.' },
-      { icon: 'radiobox-marked', text: 'Anderes Vergleichsangebot? Einfach antippen.' },
-    ],
-  },
-  {
-    icon: 'bookshelf',
-    farbe: BEREICH.stapel,
-    notiz: 'schritt 3',
-    titel: 'Der Stapel',
-    punkte: [
-      { icon: 'chevron-down', text: 'Stapelname antippen: Stapel wechseln, neu anlegen, umbenennen, CSV teilen.' },
-      { icon: 'trash-can-outline', text: 'Buch nach links wischen = entfernen.' },
-      { icon: 'pencil', text: 'Preis lange drücken = schnell um 50 Cent korrigieren.' },
-    ],
-  },
-  {
-    icon: 'star-four-points',
-    farbe: F.lila,
-    notiz: 'das beste zum schluss',
-    titel: 'Seltene Bücher',
-    punkte: [
-      { icon: 'diamond-stone', text: 'Gold (selten) und Schwarz (Rarität) kommen mit großer Enthüllung und Vibration. Jede Karte lässt sich als Bild teilen.' },
-      { icon: 'alert', text: 'Steht „prüfen“ dabei, ist die Seltenheit nicht belegt: lieber selbst nachsehen.' },
-      { icon: 'cog', text: 'Alles lässt sich in den Einstellungen anpassen. Diese Einführung findest du dort wieder.' },
-    ],
-  },
-];
+/** Seiten werden beim Öffnen gebaut: Kartenstil (FIFA Ultimate / Magic) und Expo Go (ohne Texterkennung) fließen ein. */
+function seiten(): Seite[] {
+  const n = STUFE_NAME[kartenstil()];
+  return [
+    {
+      icon: 'pencil',
+      farbe: F.gelb,
+      notiz: 'willkommen!',
+      titel: 'm4rgin preist Bücher in Sekunden aus',
+      punkte: [
+        { icon: 'store-search', text: 'Fragt booklooker, eurobuch und eBay gleichzeitig nach Vergleichspreisen.' },
+        { icon: 'calculator-variant', text: 'Rechnet nach euren Regeln – jeder Zu- und Abschlag steht sichtbar in der Rechnung.' },
+        { icon: 'bookshelf', text: 'Sagt, wohin das Buch gehört: Bücherbox (1 €/2 €), Regal oder Lager – und in welchem Raum es steht.' },
+      ],
+    },
+    {
+      icon: 'barcode-scan',
+      farbe: BEREICH.scan,
+      notiz: 'schritt 1',
+      titel: 'Scannen',
+      punkte: [
+        { icon: 'barcode', text: 'Barcode auf der Rückseite in den Rahmen halten – fertig.' },
+        texterkennungVerfuegbar
+          ? { icon: 'book-open-page-variant', text: 'Alte Bücher ohne ISBN: Titelseite fotografieren.' }
+          : {
+              icon: 'alert',
+              text: 'Titelseite fotografieren geht in dieser Testversion noch nicht (keine Texterkennung in Expo Go). Bücher ohne ISBN bitte über „Suche“ finden.',
+            },
+        { icon: 'magnify', text: 'Oder „Suche“: Titel und Autor tippen. Darunter stehen die zuletzt angesehenen Bücher.' },
+      ],
+    },
+    {
+      icon: 'tag',
+      farbe: F.blau,
+      notiz: 'schritt 2',
+      titel: 'Die Buch-Karte',
+      punkte: [
+        { icon: 'gesture-tap', text: `Während der Suche steht das Buch unten. Ist es erkannt, springt es als Karte in die Mitte – ${n.gewoehnlich.kurz}, ${n.gefragt.kurz}, ${n.selten.kurz} oder ${n.raritaet.kurz}.` },
+        { icon: 'arrow-right', text: 'Karte antippen = auspreisen. Wegwischen oder nächsten Barcode scannen = weiter.' },
+        { icon: 'star-half-full', text: 'Zustand und Merkmale wählen – der m4rgin-Preis rechnet live mit. Anderes Vergleichsangebot? Einfach antippen.' },
+        { icon: 'map-marker', text: '„Wo steht es?“ zeigt Raum und Abteilung nach dem Ladenplan. „An Haven“ schickt das Buch direkt an Haven.' },
+      ],
+    },
+    {
+      icon: 'bookshelf',
+      farbe: BEREICH.stapel,
+      notiz: 'schritt 3',
+      titel: 'Der Stapel',
+      punkte: [
+        { icon: 'chevron-down', text: 'Stapelname antippen: Stapel wechseln, neu anlegen, umbenennen, CSV teilen, nach Raum sortieren.' },
+        { icon: 'trash-can-outline', text: 'Buch nach links wischen = entfernen.' },
+        { icon: 'pencil', text: 'Preis lange drücken = schnell um 50 Cent korrigieren. Auf 1 €/2 € gesetzt, wandert es in die Bücherbox.' },
+      ],
+    },
+    {
+      icon: 'star-four-points',
+      farbe: F.lila,
+      notiz: 'das beste zum schluss',
+      titel: 'Seltene Bücher',
+      punkte: [
+        { icon: 'diamond-stone', text: `${n.selten.kurz} (selten) und ${n.raritaet.kurz} (Rarität) kommen mit großer Enthüllung und Vibration. Jede Karte lässt sich als Bild teilen.` },
+        { icon: 'alert', text: 'Steht „prüfen“ dabei, ist die Seltenheit nicht belegt: lieber selbst nachsehen.' },
+        { icon: 'cog', text: 'Alles lässt sich in den Einstellungen anpassen – auch der Kartenstil. Diese Einführung findest du dort wieder.' },
+      ],
+    },
+  ];
+}
 
 export function Einfuehrung({ sichtbar, onFertig }: { sichtbar: boolean; onFertig: () => void }) {
   const { width } = useWindowDimensions();
   const rand = useSafeAreaInsets();
   const [seite, setSeite] = useState(0);
+  const SEITEN = useMemo(seiten, [sichtbar]);
   const roll = useRef<React.ComponentRef<typeof ScrollView>>(null);
   // Auf Tablets den Zettel nicht über die ganze Breite ziehen
   const zettelBreite = Math.min(width - ABSTAND * 2, 520);
