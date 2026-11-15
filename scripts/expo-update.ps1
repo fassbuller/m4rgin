@@ -44,12 +44,14 @@ $commit = (git rev-parse --short HEAD)
 if (git status --porcelain --untracked-files=no) { $commit = "$commit+" }
 $env:EXPO_PUBLIC_STAND = "$commit vom $(Get-Date -Format 'dd.MM. HH:mm')"
 Write-Host "Stand: $env:EXPO_PUBLIC_STAND" -ForegroundColor Cyan
-# Wächter: eas update bleibt hier gelegentlich gleich zu Beginn minutenlang ohne Ausgabe hängen (der zweite
+# Wächter: eas update bleibt hier gelegentlich gleich zu Beginn sehr lange ohne Ausgabe hängen (der zweite
 # Versuch lief bisher immer durch). Darum mit Zeitlimit starten und bei Hänger selbst neu versuchen –
 # der Token bleibt in diesem Fenster, er muss nicht neu eingegeben werden.
 $nachrichtArg = $Nachricht.Replace('"', "'")
 $argumente = "--yes eas-cli@latest update --channel $Kanal --environment preview --message `"$nachrichtArg`" --platform all --non-interactive"
-$limitMinuten = 4
+# 12 Minuten: Bündeln + Hochladen dauern manchmal 5–6 Minuten (15.11.: iOS-Bundle allein 138 s);
+# mit 4 Minuten hat der Wächter funktionierende Läufe mitten im Hochladen abgebrochen.
+$limitMinuten = 12
 $ok = $false
 for ($versuch = 1; $versuch -le 3 -and -not $ok; $versuch++) {
     if ($versuch -gt 1) { Write-Host "=== eas hing - Versuch $versuch von 3 ===" -ForegroundColor Yellow }
