@@ -105,6 +105,15 @@ export function preiseUeberHaven(e: Einstellungen): boolean {
   return !!h && h.preise !== false;
 }
 
+/**
+ * Haven fürs Senden („An Haven“): nur eine EIGENE Kopplung. Der gemeinsame Schlüssel der Testversion gilt in Haven
+ * nur für Marktpreise (403 market_only, Haven v0.99.151) – damit nicht jede Testperson Bücher in Haven ablegen kann.
+ */
+export function havenZumSenden(e: Einstellungen): { zugang: HavenZugang | null; nurTestVorgabe: boolean } {
+  const w = wirksamerHaven(e.haven, TEST_HAVEN);
+  return w && !w.vorgabe ? { zugang: w.zugang, nurTestVorgabe: false } : { zugang: null, nurTestVorgabe: !!w?.vorgabe };
+}
+
 /** Der Haven, der gilt: eigene Kopplung, sonst die Vorgabe der Testversion (TEST_HAVEN), sonst keiner. */
 export function havenFuer(e: Einstellungen): HavenZugang | null {
   return wirksamerHaven(e.haven, TEST_HAVEN)?.zugang ?? null;

@@ -100,7 +100,16 @@ export async function anHavenSenden(z: HavenZugang, buch: HavenBuch, timeoutMs =
     });
     // Antworten laut Haven (firestream2 v0.99.130): 201 angekommen · 401 Schlüssel fehlt/unbekannt/widerrufen ·
     // 404 Empfang in diesem Haven aus · 400 Feld ungültig {error:{details:{field}}} · 413 über 8 KB · 429 zu viele
-    if (res.status === 401 || res.status === 403) throw new Error('Haven kennt diesen Geräte-Schlüssel nicht oder er wurde widerrufen (Einstellungen prüfen).');
+    if (res.status === 403) {
+      // Haven v0.99.151: Der gemeinsame Schlüssel der Testversion darf nur Marktpreise (Code market_only)
+      const code = await res
+        .json()
+        .then((j: { error?: { code?: string } }) => j?.error?.code)
+        .catch(() => undefined);
+      if (code === 'market_only') throw new Error('Zum Senden an Haven einmal koppeln (Einstellungen → Haven → QR-Code).');
+      throw new Error('Haven erlaubt diesem Gerät das Senden nicht (Einstellungen → Haven prüfen).');
+    }
+    if (res.status === 401) throw new Error('Haven kennt diesen Geräte-Schlüssel nicht oder er wurde widerrufen (Einstellungen prüfen).');
     if (res.status === 404) throw new Error('Der m4rgin-Empfang ist in diesem Haven ausgeschaltet (oder die Adresse stimmt nicht).');
     if (res.status === 429) throw new Error('Zu viele Sendungen – in einer Minute nochmal.');
     if (res.status === 413) throw new Error('Haven lehnt ab: Daten zu groß.');

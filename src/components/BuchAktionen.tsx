@@ -8,6 +8,7 @@ import { Chip } from './Teile';
 import { F } from '../theme';
 import { anHavenSenden, BuchFuerHaven, havenBereit, havenPayload, HavenZugang, teilenText } from '../lib/haven';
 import { VERSION_TEXT } from '../version';
+import { TEST_HAVEN } from '../testvorgabe';
 
 type Zustand = { art: 'ok' | 'fehler' | 'laeuft'; text: string } | null;
 
@@ -34,9 +35,12 @@ export function BuchAktionen({ buch, haven }: { buch: BuchFuerHaven; haven?: Hav
 
   const anHaven = async () => {
     if (!havenBereit(haven)) {
+      // Testversion: Preise kommen schon über den Test-Haven, Senden braucht aber eine eigene Kopplung
       Alert.alert(
-        'Haven ist noch nicht eingerichtet',
-        'Unter Einstellungen → Haven die Haven-Adresse und den Geräte-Schlüssel eintragen. Den Schlüssel gibt Haven für dieses Handy aus.',
+        TEST_HAVEN ? 'Zum Senden einmal koppeln' : 'Haven ist noch nicht eingerichtet',
+        TEST_HAVEN
+          ? 'Zum Senden an Haven einmal koppeln: Einstellungen → Haven → „Mit Haven koppeln (QR-Code)“. Die Preise kommen in der Testversion schon über den Test-Haven.'
+          : 'Am einfachsten koppeln: Einstellungen → Haven → „Mit Haven koppeln (QR-Code)“. Oder Adresse und Geräte-Schlüssel von Hand eintragen.',
       );
       return;
     }

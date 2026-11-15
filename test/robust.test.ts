@@ -571,3 +571,21 @@ test('Test-Haven-Vorgabe: eigene Kopplung hat Vorrang, Schalter gilt auch für d
   assert.equal(wirksamerHaven({ adresse: '', schluessel: '' }, null), null);
   assert.equal(wirksamerHaven(undefined, null), null);
 });
+
+test('An Haven mit Marktpreis-Schlüssel: 403 market_only → Koppel-Hinweis', async () => {
+  const { anHavenSenden, havenPayload } = await import('../src/lib/haven');
+  const alt = globalThis.fetch;
+  let antwort = () => new Response(JSON.stringify({ error: { code: 'market_only', message: 'nur Marktpreise' } }), {
+    status: 403, headers: { 'Content-Type': 'application/json' },
+  });
+  globalThis.fetch = (async () => antwort()) as typeof fetch;
+  try {
+    const p = havenPayload({ titel: 'Tschick', autoren: [] }, 'test');
+    const z = { adresse: 'https://laden.kasse-test.fun', schluessel: 'm4g_gemeinsam' };
+    await assert.rejects(anHavenSenden(z, p), /einmal koppeln/);
+    antwort = () => new Response('{"error":{"code":"forbidden"}}', { status: 403, headers: { 'Content-Type': 'application/json' } });
+    await assert.rejects(anHavenSenden(z, p), /erlaubt diesem Gerät das Senden nicht/);
+  } finally {
+    globalThis.fetch = alt;
+  }
+});

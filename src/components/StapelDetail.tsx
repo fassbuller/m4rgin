@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { EintragAenderung, LogEintrag, ausStapelEntfernen, eintragAktualisieren } from '../db';
 import { Einstellungen, parseZahl, zahlText } from '../einstellungen';
-import { havenFuer, marktFuer, marktUnvollstaendig, seltenheitAusEintrag } from '../dienste';
+import { havenZumSenden, marktFuer, marktUnvollstaendig, seltenheitAusEintrag } from '../dienste';
 import { Titel } from '../lib/titel';
 import { MarktErgebnis } from '../lib/markt';
 import { Beschreibung, kiBeschreibung } from '../lib/beschreibung';
@@ -262,7 +262,7 @@ export function StapelDetail({ eintrag, regeln, einst, onSchliessen, onGespeiche
               <Genres sachgruppen={titel.sachgruppen} />
             </View>
             <BuchAktionen
-              haven={havenFuer(einst)}
+              haven={havenZumSenden(einst).zugang}
               buch={{
                 isbn: eintrag.isbn ?? undefined,
                 titel: eintrag.titel ?? eintrag.suchbegriff,

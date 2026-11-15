@@ -18,7 +18,7 @@ import { Signal } from '../lib/trend';
 import { Einstellungen } from '../einstellungen';
 import { korrekturSpeichern, LogEintrag, logAuspreisen, logSuche, logVerworfen, Methode } from '../db';
 import { bewerteKonfidenz } from '../lib/konfidenz';
-import { havenFuer, marktFuer, seltenheitFuer, standortFuer, sucheFelder, sucheIsbn, trendsFuer, vorlaeufig } from '../dienste';
+import { havenZumSenden, marktFuer, seltenheitFuer, standortFuer, sucheFelder, sucheIsbn, trendsFuer, vorlaeufig } from '../dienste';
 import { Standort } from '../lib/ladenplan';
 import { useBewegung } from '../components/Glanz';
 import { MitteKarte } from '../components/MitteKarte';
@@ -506,7 +506,7 @@ export function ScanScreen({ aktiv, einst, stapel, onStapelGeaendert, onZumStape
           regeln={einst.regeln}
           seltenheitRegeln={einst.seltenheit}
           links={einst.links}
-          haven={havenFuer(einst) ?? undefined}
+          haven={havenZumSenden(einst).zugang ?? undefined}
           standort={vorgang.standort ?? null}
           onSpeichern={speichern}
           onVerwerfen={() => {
