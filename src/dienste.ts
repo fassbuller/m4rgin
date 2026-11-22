@@ -62,6 +62,18 @@ export async function standortFuer(t: Titel): Promise<Standort | null> {
   return standort(LADENPLAN, e);
 }
 
+/** Warum kein Raum angezeigt wird – für den Hinweis im Preis-Blatt und auf der Karte. */
+export function standortHinweis(t: Titel, fehler?: unknown): string | null {
+  if (fehler) {
+    const f = String((fehler as Error)?.message ?? fehler);
+    return /mit (403|429|5\d\d)|network|netz|failed|zeitüberschreitung/i.test(f)
+      ? 'Raum unbekannt – die DNB ist gerade nicht erreichbar.'
+      : 'Raum unbekannt – die DNB-Angaben ließen sich nicht lesen.';
+  }
+  if (!t.isbn && !(t.quelle === 'dnb' && t.id)) return 'Raum unbekannt – ohne ISBN keine DNB-Angaben.';
+  return 'Raum unbekannt – die DNB kennt dieses Buch nicht.';
+}
+
 /** Alle Preisquellen parallel, Kennzahlen in den Verlauf. */
 export async function marktFuer(t: Titel, e: Einstellungen): Promise<MarktErgebnis> {
   const quellen = [

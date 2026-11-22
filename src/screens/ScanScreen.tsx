@@ -18,7 +18,7 @@ import { Signal } from '../lib/trend';
 import { Einstellungen } from '../einstellungen';
 import { korrekturSpeichern, LogEintrag, logAuspreisen, logSuche, logVerworfen, Methode } from '../db';
 import { bewerteKonfidenz } from '../lib/konfidenz';
-import { havenZumSenden, marktFuer, seltenheitFuer, standortFuer, sucheFelder, sucheIsbn, trendsFuer, vorlaeufig } from '../dienste';
+import { havenZumSenden, marktFuer, seltenheitFuer, standortFuer, standortHinweis, sucheFelder, sucheIsbn, trendsFuer, vorlaeufig } from '../dienste';
 import { Standort } from '../lib/ladenplan';
 import { useBewegung } from '../components/Glanz';
 import { MitteKarte } from '../components/MitteKarte';
@@ -52,6 +52,8 @@ interface Vorgang {
   ausgepreist: boolean;
   /** Wo das Buch laut Ladenplan vermutlich steht (aus der DNB-Sacherschließung) */
   standort?: Standort | null;
+  /** Warum kein Raum da ist (DNB nicht erreichbar, Buch unbekannt …) */
+  standortHinweis?: string | null;
 }
 
 interface Props {
@@ -151,8 +153,8 @@ export function ScanScreen({ aktiv, einst, stapel, onStapelGeaendert, onZumStape
       aendere({ titel: t, laedt: false, fehler: hinweis, marktLaedt: true, standort: null }, start);
       // Ladenplan parallel zum Markt – darf scheitern, ohne den Vorgang zu stören
       standortFuer(t)
-        .then((s) => aendere({ standort: s }, start))
-        .catch(() => undefined);
+        .then((s) => aendere({ standort: s, standortHinweis: s ? null : standortHinweis(t) }, start))
+        .catch((err) => aendere({ standort: null, standortHinweis: standortHinweis(t, err) }, start));
       try {
         const m = await marktFuer(t, einst);
         const alleAus = m.status.length > 0 && m.status.every((x) => !x.ok);
@@ -463,6 +465,7 @@ export function ScanScreen({ aktiv, einst, stapel, onStapelGeaendert, onZumStape
             trends={vorgang.trends}
             seltenheit={seltenheit}
             standort={vorgang.standort ?? null}
+            standortHinweis={vorgang.standortHinweis ?? null}
             bewegung={bewegung}
             onOeffnen={() => setSheetOffen(true)}
             onSchliessen={vorgangBeenden}
@@ -508,6 +511,7 @@ export function ScanScreen({ aktiv, einst, stapel, onStapelGeaendert, onZumStape
           links={einst.links}
           haven={havenZumSenden(einst).zugang ?? undefined}
           standort={vorgang.standort ?? null}
+            standortHinweis={vorgang.standortHinweis ?? null}
           onSpeichern={speichern}
           onVerwerfen={() => {
             setSheetOffen(false);

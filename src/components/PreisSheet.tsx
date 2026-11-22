@@ -56,6 +56,8 @@ interface Props {
   haven?: HavenZugang;
   /** Ladenplan-Standort (DNB-Sacherschließung), null = unbekannt */
   standort?: Standort | null;
+  /** Warum kein Standort da ist („Raum unbekannt – die DNB ist gerade nicht erreichbar.“) */
+  standortHinweis?: string | null;
   onSpeichern: (d: AuspreisDaten) => void;
   onVerwerfen: () => void;
 }
@@ -216,10 +218,14 @@ export function PreisSheet(p: Props) {
         )}
 
         {/* Ladenplan: Wo steht es? (nicht für die Grabbelkiste) */}
-        {p.standort && kategorie !== 'grabbel' && (
+        {(p.standort || p.standortHinweis) && kategorie !== 'grabbel' && (
           <>
             <Abschnitt titel={kategorie === 'lager' ? 'Wo stünde es im Laden?' : 'Wo steht es?'} icon="map-marker" farbe={F.gruen} />
-            <StandortBlock s={p.standort} />
+            {p.standort ? (
+              <StandortBlock s={p.standort} />
+            ) : (
+              <Text style={[st.klein, { marginTop: 4 }]}>{p.standortHinweis}</Text>
+            )}
           </>
         )}
 

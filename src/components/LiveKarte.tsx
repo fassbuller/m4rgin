@@ -26,6 +26,8 @@ interface Props {
   seltenheit: Seltenheit | null;
   /** Wo es laut Ladenplan steht (null = unbekannt bzw. noch nicht da) */
   standort?: Standort | null;
+  /** Warum kein Raum da ist */
+  standortHinweis?: string | null;
   /** Animationen erlaubt (Einstellung + Gerät) */
   bewegung: boolean;
   onOeffnen: () => void;
@@ -102,6 +104,9 @@ export function LiveKarte(p: Props) {
         </View>
       )}
       {p.standort && p.vorlaeufig?.kategorie !== 'grabbel' && <StandortZeile s={p.standort} />}
+      {!p.standort && p.standortHinweis && p.vorlaeufig?.kategorie !== 'grabbel' && (
+        <Text style={[st.trends, { marginTop: 6, color: F.grau }]}>{p.standortHinweis}</Text>
+      )}
       {p.trends && p.trends.some((x) => x.text) && (
         <View style={[st.reihe, { marginTop: 4 }]}>
           <Icon name="trending-up" size={16} farbe={F.hand} />
